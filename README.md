@@ -95,27 +95,39 @@ This marketplace is your one-stop shop for Claude Code extensions that make life
 
 ### Prerequisites
 
-- **Claude Code** installed and configured
+- **Claude Code/Desktop etc.** installed and configured
 - **Node.js 18+** (for TypeScript plugins)
 - **Python 3.11+** (for Python plugins)
 - API keys for specific services (Monarch Money, Unsplash, etc.)
 
 ### Installation
 
-1. **Clone this marketplace:**
+1. **Add this marketplace to Claude Code:**
 
-   ```bash
-   cd ~/.claude
-   git clone <your-repo-url> marketplaces/davideasaf
+   In your Claude Code settings file (`~/.claude/settings/settings.json`), add this marketplace to the `marketplaces` array:
+
+   ```json
+   {
+     "marketplaces": [
+       {
+         "name": "davideasaf-marketplace",
+         "source": "https://github.com/yourusername/davideasaf-marketplace.git"
+       }
+     ]
+   }
    ```
 
-2. **Install a specific plugin:**
+   Or use the marketplace installation command:
+   ```bash
+   # Add marketplace via Claude Code
+   /marketplace add https://github.com/yourusername/davideasaf-marketplace.git
+   ```
+
+2. **Configure plugin-specific credentials:**
 
    **Monarch Money:**
 
    ```bash
-   cd marketplaces/davideasaf/monarch-money/skills/monarch-money-handling
-   npm install
    export MONARCH_EMAIL="your-email"
    export MONARCH_PASSWORD="your-password"
    ```
@@ -123,14 +135,13 @@ This marketplace is your one-stop shop for Claude Code extensions that make life
    **Image Search:**
 
    ```bash
-   cd marketplaces/davideasaf/image-search/local-mcp/unsplash-mcp-server
-   export UNSPLASH_ACCESS_KEY="your-key"
+   export UNSPLASH_ACCESS_KEY="your-access-key"
    ```
 
-3. **Test the plugin:**
-   ```bash
-   # In Claude Code, just start using it naturally!
-   # Example: "Find my recent Walmart transactions"
+3. **Start using the plugins naturally in Claude Code:**
+   ```
+   "Find my recent Walmart transactions"
+   "Search for sunset mountain images"
    ```
 
 ---
