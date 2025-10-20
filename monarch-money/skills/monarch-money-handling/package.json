@@ -1,0 +1,24 @@
+{
+  "name": "monarch-money-skill",
+  "version": "1.0.0",
+  "description": "TypeScript wrapper scripts for Monarch Money integration",
+  "scripts": {
+    "build": "tsc",
+    "find": "tsx scripts/find_transaction.ts",
+    "categories": "tsx scripts/get_categories.ts",
+    "split": "tsx scripts/split_transaction.ts",
+    "split-receipt": "tsx scripts/split_and_annotate.ts",
+    "validate": "tsx scripts/validate_splits.ts",
+    "notes": "tsx scripts/add_notes.ts",
+    "update": "tsx scripts/update_transaction.ts"
+  },
+  "dependencies": {
+    "monarchmoney": "^1.0.0",
+    "playwright": "^1.56.1"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "tsx": "^4.0.0",
+    "typescript": "^5.0.0"
+  }
+}

@@ -1,0 +1,8 @@
+{
+  "name": "image-search",
+  "description": "Describe the image you want and pull it from the internet",
+  "version": "1.0.0",
+  "author": {
+    "name": "David Asaf"
+  }
+}

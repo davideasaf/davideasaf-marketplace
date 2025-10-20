@@ -1,0 +1,18 @@
+{
+  "name": "davideasaf-marketplace",
+  "owner": {
+    "name": "David Asaf"
+  },
+  "plugins": [
+    {
+      "name": "image-search",
+      "source": "./image-search",
+      "description": "Describe the image you want and pull it from the internet"
+    },
+    {
+      "name": "monarch-money",
+      "source": "./monarch-money",
+      "description": "Claude toolkit to interact, categorize, and plan using Monarch Moneys"
+    }
+  ]
+}

@@ -1,0 +1,9 @@
+{
+  "name": "monarch-money",
+  "description": "Split receipts, categorize transactions, and manage Monarch Money budget data through automated TypeScript scripts",
+  "version": "1.0.0",
+  "author": {
+    "name": "David Asaf"
+  },
+  "keywords": ["monarch-money", "budgeting", "finance", "receipt-splitting", "transactions"]
+}
