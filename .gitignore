@@ -101,3 +101,6 @@ credentials.json
 
 # MCP Server builds
 *.mcp.json.bck
+
+# Monarch Money cache
+.cache/
