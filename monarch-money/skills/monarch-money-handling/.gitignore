@@ -1,0 +1,15 @@
+# Dependencies
+node_modules/
+
+# Build outputs
+dist/
+
+# Cache
+.cache/
+
+# Environment
+.env
+.env.local
+
+# Forked library (separate git repo)
+monarchmoney-ts/

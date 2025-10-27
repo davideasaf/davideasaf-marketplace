@@ -278,6 +278,80 @@ Should list all your categories.
 
 ---
 
+## Development Setup (monarchmoney-ts Library)
+
+### Fork and Local Development
+
+This skill uses a **locally linked fork** of the monarchmoney-ts library located at `./monarchmoney-ts` within this skill directory.
+
+**Why a fork?**
+- Enables local modifications when bugs are discovered
+- Allows creating PRs back to the original repo
+- Provides full control over the codebase
+- Co-located with the skill for easier development
+
+### Repository Links
+
+- **Fork:** https://github.com/davideasaf/monarchmoney-ts
+- **Upstream (Original):** https://github.com/keithah/monarchmoney-ts
+
+### Making Changes to monarchmoney-ts
+
+When you need to fix bugs or add features:
+
+```bash
+# 1. Navigate to the forked repo (co-located with skill)
+cd monarchmoney-ts
+
+# 2. Make your changes, then rebuild the library
+npm run build
+
+# 3. Test changes immediately in the skill (already linked via npm link)
+cd ..
+npm run categories  # or any other script
+
+# 4. Commit and push to your fork
+cd monarchmoney-ts
+git add .
+git commit -m "fix: description of fix"
+git push origin main
+
+# 5. Create PR to upstream via GitHub
+# Visit: https://github.com/davideasaf/monarchmoney-ts
+# Click "Contribute" → "Open pull request"
+```
+
+### Syncing with Upstream
+
+Periodically sync your fork with the original repo:
+
+```bash
+cd monarchmoney-ts
+
+# Fetch upstream changes
+git fetch upstream
+
+# Merge upstream into your fork
+git merge upstream/main
+
+# Push to your fork
+git push origin main
+
+# Rebuild to incorporate changes
+npm run build
+```
+
+### Verifying the Link
+
+Check that the skill is using your local fork:
+
+```bash
+npm list monarchmoney
+# Should show: monarchmoney@1.1.3 -> ./monarchmoney-ts
+```
+
+---
+
 ## Common Patterns
 
 ### Pattern 1: Receipt with Mixed Categories
@@ -400,12 +474,19 @@ All scripts follow consistent error handling:
 
 ## Resources
 
+### Documentation
 - **Detailed Script Documentation:** [SCRIPTS_REFERENCE.md](SCRIPTS_REFERENCE.md)
 - **Formatting Best Practices:** [FORMATTING_GUIDE.md](FORMATTING_GUIDE.md)
 - **Performance Optimization:** [PERFORMANCE_OPTIMIZATION.md](PERFORMANCE_OPTIMIZATION.md)
 - **Troubleshooting Guide:** [TROUBLESHOOTING.md](TROUBLESHOOTING.md)
 - **Technical Details:** [ROOT_CAUSE_ANALYSIS.md](ROOT_CAUSE_ANALYSIS.md)
-- **TypeScript SDK:** https://github.com/keithah/monarchmoney-ts
+
+### Repositories
+- **Forked SDK (Local):** https://github.com/davideasaf/monarchmoney-ts (co-located at `./monarchmoney-ts`)
+- **Upstream SDK:** https://github.com/keithah/monarchmoney-ts
+- **Development Setup:** See "Development Setup (monarchmoney-ts Library)" section above
+
+### External Links
 - **Monarch Money:** https://www.monarchmoney.com
 
 ---
