@@ -8,12 +8,14 @@
     "categories": "tsx scripts/get_categories.ts",
     "split": "tsx scripts/split_transaction.ts",
     "split-receipt": "tsx scripts/split_and_annotate.ts",
+    "split-receipt-optimized": "tsx scripts/split_and_annotate_optimized.ts",
     "validate": "tsx scripts/validate_splits.ts",
     "notes": "tsx scripts/add_notes.ts",
-    "update": "tsx scripts/update_transaction.ts"
+    "update": "tsx scripts/update_transaction.ts",
+    "bulk-update": "tsx scripts/bulk_update.ts",
+    "benchmark": "tsx scripts/benchmark.ts"
   },
   "dependencies": {
-    "monarchmoney": "^1.0.0",
     "playwright": "^1.56.1"
   },
   "devDependencies": {
