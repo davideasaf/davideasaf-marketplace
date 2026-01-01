@@ -1,6 +1,6 @@
 ---
 name: Monarch Money Skills
-description: Split receipts by category, categorize transactions, search Monarch Money transactions by date/merchant/amount, list budget categories, update transaction details, and add itemized notes. Use when user provides receipt images, asks to split transactions, needs to find/categorize Monarch Money transactions, or wants to update transaction metadata.
+description: Split receipts by category, categorize transactions, search Monarch Money transactions by date/merchant/amount, list budget categories, update transaction details, add itemized notes, and automate Amazon refund processing. Use when user provides receipt images, asks to split transactions, needs to find/categorize Monarch Money transactions, wants to update transaction metadata, or needs to process unreviewed Amazon refunds (starts with Monarch Money, pulls only needsReview=true transactions, scrapes Amazon for item details, updates with categories and notes).
 ---
 
 # Monarch Money Skills
@@ -17,6 +17,7 @@ Claude will automatically invoke this skill when you:
 - Want to add itemized notes to transactions
 - Ask to list available budget categories
 - Request updates to transaction details (merchant, amount, date, etc.)
+- Want to process Amazon refunds (annotate with item details and categories)
 
 **Just ask naturally** - Claude handles the complexity automatically.
 
@@ -32,6 +33,7 @@ You can trigger this skill by saying things like:
 - "Add notes to this transaction with itemized prices"
 - "Update the merchant name for transaction XYZ"
 - "Categorize this $50 transaction as dining out"
+- "Process my Amazon refunds from the past 14 days"
 
 ---
 
@@ -191,6 +193,92 @@ npm run notes -- <id> $'Category:\n• Item 1 - $14.99\n• Item 2 - $8.99'
 
 **Note formatting:** Always use `$'...\n...'` syntax for newlines in bash commands.
 
+### 5. Amazon Refund Processing
+
+**When:** User wants to annotate Amazon refund transactions with item details and correct categories.
+
+**Workflow - START with Monarch Money:**
+1. **Find unreviewed refunds in Monarch Money**
+   - Filter: Amazon merchant, positive amounts (refunds), `needsReview: true`
+   - Date range: Last 14 days (default) or custom range
+2. **Scrape Amazon for item details**
+   - **Recommended:** Use standalone Playwright scraper (outputs JSON, ~100 tokens)
+   - Alternative: Use Playwright MCP (outputs ~15k tokens per call - inefficient)
+3. **Update Monarch Money**
+   - Infer categories from item names
+   - Format notes with item details + order links
+   - Bulk update transactions and mark as reviewed
+
+**⚡ Standalone Amazon Scraper (Efficient):**
+```bash
+# First run - interactive login (opens browser)
+npm run amazon-scrape
+
+# Subsequent runs - headless with saved session
+npm run amazon-scrape -- --headless > refunds.json
+
+# With item details from order pages
+npm run amazon-scrape-items -- --headless > refunds_with_items.json
+```
+
+Output format:
+```json
+{
+  "refunds": [
+    {
+      "amount": 42.80,
+      "date": "December 21, 2025",
+      "orderNumber": "111-8140400-3904227",
+      "orderUrl": "https://amazon.com/...",
+      "items": [{ "name": "Balaclava Ski Mask", "price": 19.95 }]
+    }
+  ]
+}
+```
+
+**Why use standalone scraper?**
+- Playwright MCP returns ~15k tokens (full page state) per call
+- Standalone scraper outputs ~100 tokens (JSON only)
+- 150x more efficient for batch processing
+
+**Critical:** Only process transactions with `reviewStatus: "needs_review"` - skip already reviewed refunds.
+
+**Usage:**
+```bash
+# Process last 14 days (default)
+npm run process-refunds
+
+# Custom date range
+npm run process-refunds -- --days 30
+npm run process-refunds -- --start-date 2025-10-13 --end-date 2025-10-27
+
+# Dry run (preview changes)
+npm run process-refunds -- --days 14 --dry-run
+```
+
+**Note format:**
+```
+Refund: [Item Name from Amazon]
+Order: https://www.amazon.com/gp/your-account/order-details?orderID=XXX
+```
+
+**Category Inference:**
+The script automatically maps items to categories based on keywords:
+- Phone case, charger → Electronics
+- Clothing, shoes → Clothing
+- Beauty products → Personal Care
+- Art supplies, crafts → Hobbies
+- Books → Books
+- Food items → Groceries
+
+**Performance:**
+- Batch processing: 10 transactions/batch with 1s delay between batches
+- Reuses single MonarchClient instance (avoids re-login overhead)
+- Category lookup cached for speed
+- ~2-3 seconds per transaction vs ~30s with individual `npm run notes` calls
+
+**📖 For category mappings and performance details, see `scripts/process_amazon_refunds.ts`**
+
 ---
 
 ## Available Scripts
@@ -205,8 +293,12 @@ Quick reference of all scripts:
 | `npm run split-receipt` | Split + add notes (primary) | `npm run split-receipt -- <id> --splits-file splits.json` |
 | `npm run notes` | Add/update notes only | `npm run notes -- <id> 'Note with $prices'` |
 | `npm run update` | Update transaction fields | `npm run update -- <id> --category <cat_id>` |
+| `npm run batch-refunds` | Find Amazon refunds (Phase 1) | `npm run batch-refunds -- --days 14` |
+| `npm run finalize-refunds` | Update refunds with categories (Phase 3) | `npm run finalize-refunds` |
+| `npm run amazon-scrape` | Standalone Amazon scraper (efficient) | `npm run amazon-scrape -- --headless` |
+| `npm run amazon-scrape-items` | Scrape with item details | `npm run amazon-scrape-items -- --headless` |
 
-**📖 For detailed script documentation, see [SCRIPTS_REFERENCE.md](SCRIPTS_REFERENCE.md)**
+**📖 For detailed script documentation and Amazon refund workflow, see [BATCH_REFUNDS_GUIDE.md](BATCH_REFUNDS_GUIDE.md)**
 
 ---
 
@@ -467,6 +559,23 @@ All scripts follow consistent error handling:
 3. **Use formatting utilities** - `format_notes.ts` provides consistent, optimized formatting
 4. **Validate before executing** - Catch errors locally before API calls
 5. **Batch operations** - Use `npm run update` once instead of multiple calls when updating same transaction
+6. **Reuse MonarchClient instances** - For bulk operations, initialize once and reuse (avoids login overhead)
+7. **Use batch scripts** - `npm run process-refunds` processes 10 transactions/batch vs individual `npm run notes` calls
+
+### Why `npm run notes` Takes ~30s
+
+**Root Causes:**
+1. **Login overhead** - Each script call initializes new MonarchClient and authenticates (~5-10s)
+2. **GraphQL queue management** - Request queueing/concurrency control adds latency
+3. **Session validation** - Even with saved sessions, validation checks add overhead
+4. **Single-transaction updates** - No batching optimization
+
+**Solution:**
+Use automated scripts like `npm run process-refunds` that:
+- Initialize MonarchClient **once** and reuse for all updates
+- Batch process transactions (10 at a time with 1s delays)
+- Result: **~2-3 seconds per transaction** vs **~30s** per individual `npm run notes` call
+- **10x+ performance improvement** for bulk operations
 
 **📖 See [PERFORMANCE_OPTIMIZATION.md](PERFORMANCE_OPTIMIZATION.md) for detailed optimization strategies**
 
