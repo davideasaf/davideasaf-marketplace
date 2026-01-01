@@ -48,44 +48,80 @@ async function extractRefundsFromPage(page: Page): Promise<RefundData[]> {
     const refunds: any[] = [];
     const seen = new Set<string>();
 
-    // Get current date context by finding date headers
-    let currentDate = '';
-    const dateHeaders = document.querySelectorAll('[class*="date"], h2, h3');
+    // Date pattern for Amazon
     const datePattern = /^(January|February|March|April|May|June|July|August|September|October|November|December)\s+\d{1,2},\s+\d{4}$/;
 
-    // Find all transaction containers
-    const containers = document.querySelectorAll('.apx-transactions-line-item-component-container');
+    // Strategy: Find refund amounts (green/success color with + sign), then find nearby order links
+    // Refund amounts have class "a-color-success" and start with "+"
 
-    containers.forEach((container) => {
-      // Check previous siblings for date
-      let sibling = container.previousElementSibling;
-      while (sibling) {
-        const text = sibling.textContent?.trim() || '';
-        if (datePattern.test(text)) {
-          currentDate = text;
-          break;
-        }
-        sibling = sibling.previousElementSibling;
+    // First, collect all dates on the page with their positions
+    const dateElements = document.querySelectorAll('.apx-transaction-date-container span, [class*="date"] span');
+    const dates: { el: Element; text: string; top: number }[] = [];
+
+    dateElements.forEach((el) => {
+      const text = el.textContent?.trim() || '';
+      if (datePattern.test(text)) {
+        const rect = el.getBoundingClientRect();
+        dates.push({ el, text, top: rect.top });
       }
+    });
 
-      // Get amount
-      const amountEl = container.querySelector('span.a-text-bold');
-      const amountText = amountEl?.textContent?.trim() || '';
+    // Sort dates by position (top to bottom)
+    dates.sort((a, b) => a.top - b.top);
 
-      // Only process positive amounts (refunds)
-      if (!amountText.startsWith('+') && !amountText.startsWith('$')) return;
-      if (amountText.startsWith('-')) return;
+    // Find all refund amounts - they have a-color-success class and start with +
+    const refundAmountSpans = document.querySelectorAll('span.a-color-success.a-text-bold');
+
+    refundAmountSpans.forEach((amountSpan) => {
+      const amountText = amountSpan.textContent?.trim() || '';
+
+      // Must start with + and be a valid currency amount
+      if (!amountText.match(/^\+\$[\d,]+\.\d{2}$/)) return;
 
       const amount = parseFloat(amountText.replace(/[+$,]/g, ''));
       if (isNaN(amount) || amount <= 0) return;
 
-      // Get order link
-      const orderLink = container.querySelector('a[href*="orderID="]') as HTMLAnchorElement;
+      // Find the transaction container by walking up
+      let container = amountSpan.parentElement;
+      for (let i = 0; i < 15 && container; i++) {
+        // Look for a container that has an order link
+        if (container.querySelector('a[href*="orderID="]')) {
+          break;
+        }
+        container = container.parentElement;
+      }
+
+      if (!container) return;
+
+      // Find the order link within this container or nearby siblings
+      let orderLink: HTMLAnchorElement | null = container.querySelector('a[href*="orderID="]');
+
+      // If not in container, check next siblings (Amazon puts link in separate div)
+      if (!orderLink) {
+        let sibling = container.nextElementSibling;
+        for (let i = 0; i < 5 && sibling && !orderLink; i++) {
+          orderLink = sibling.querySelector('a[href*="orderID="]');
+          sibling = sibling.nextElementSibling;
+        }
+      }
+
       if (!orderLink) return;
 
       const urlMatch = orderLink.href.match(/orderID=([^&]+)/);
       const orderNumber = urlMatch ? urlMatch[1] : '';
       if (!orderNumber) return;
+
+      // Find the date for this transaction by position
+      const amountRect = amountSpan.getBoundingClientRect();
+      let dateText = 'Unknown';
+
+      // Find the closest date that's above this transaction
+      for (let i = dates.length - 1; i >= 0; i--) {
+        if (dates[i].top < amountRect.top) {
+          dateText = dates[i].text;
+          break;
+        }
+      }
 
       // Dedup by order + amount
       const key = `${orderNumber}_${amount}`;
@@ -94,7 +130,7 @@ async function extractRefundsFromPage(page: Page): Promise<RefundData[]> {
 
       refunds.push({
         amount,
-        date: currentDate,
+        date: dateText,
         orderNumber,
         orderUrl: orderLink.href,
       });
