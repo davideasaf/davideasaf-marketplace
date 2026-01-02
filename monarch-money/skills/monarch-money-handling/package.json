@@ -8,12 +8,21 @@
     "categories": "tsx scripts/get_categories.ts",
     "split": "tsx scripts/split_transaction.ts",
     "split-receipt": "tsx scripts/split_and_annotate.ts",
+    "split-receipt-optimized": "tsx scripts/split_and_annotate_optimized.ts",
     "validate": "tsx scripts/validate_splits.ts",
     "notes": "tsx scripts/add_notes.ts",
-    "update": "tsx scripts/update_transaction.ts"
+    "update": "tsx scripts/update_transaction.ts",
+    "bulk-update": "tsx scripts/bulk_update.ts",
+    "benchmark": "tsx scripts/benchmark.ts",
+    "process-refunds": "tsx scripts/process_amazon_refunds.ts",
+    "update-refund-categories": "tsx scripts/update_refund_categories.ts",
+    "update-single-refund": "tsx scripts/update_single_refund.ts",
+    "batch-refunds": "tsx scripts/batch_process_amazon_refunds.ts",
+    "finalize-refunds": "tsx scripts/finalize_refund_updates.ts",
+    "amazon-scrape": "tsx scripts/scrape_amazon_refunds_standalone.ts",
+    "amazon-scrape-items": "tsx scripts/scrape_amazon_refunds_standalone.ts --include-items"
   },
   "dependencies": {
-    "monarchmoney": "^1.0.0",
     "playwright": "^1.56.1"
   },
   "devDependencies": {
