@@ -1,0 +1,9 @@
+{
+  "name": "github-dev-flow",
+  "description": "Complete GitHub issue lifecycle management: create well-documented issues with evidence collection, manage development workflows with project board integration, worktree isolation, and structured planning phases. Supports bug reproduction via Claude Chrome, feature request assessment, single issue work, batch processing, and milestone completion.",
+  "version": "1.1.0",
+  "author": {
+    "name": "David Asaf"
+  },
+  "keywords": ["github", "issues", "workflow", "kanban", "project-board", "worktree", "planning", "development", "bug-report", "feature-request", "triage", "evidence", "reproduction"]
+}
