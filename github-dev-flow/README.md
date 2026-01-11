@@ -37,13 +37,24 @@ Main workflow skill for working on GitHub issues.
 - "Complete all Dev Ready issues"
 - "Report on Phase 1 status"
 
-### `doctor`
+### `create-gh-issue`
+
+Create well-documented GitHub issues with evidence collection and structured formatting.
+
+**Triggers:**
+- "Create a bug report for the login issue"
+- "File a feature request for dark mode"
+- "Document this bug with screenshots"
+
+## Commands Included
+
+### `/github-dev-doctor`
 
 Environment diagnostic tool to verify setup.
 
 **Usage:**
 ```
-/doctor
+/github-dev-doctor
 ```
 
 Checks:
