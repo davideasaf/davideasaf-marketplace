@@ -148,8 +148,10 @@ To implement an approved plan:
 
 2. **Ensure workspace is ready**
 
-   **Local (CLI):** Navigate to worktree (create if needed)
+   **Local (CLI):** Create worktree if it doesn't exist, then navigate
    ```bash
+   # Create worktree (idempotent - skips if already exists)
+   uv run python scripts/worktree_manager.py create 42
    cd ../<repo>-issue-42-<slug>/
    ```
 
