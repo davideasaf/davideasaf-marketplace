@@ -111,6 +111,66 @@ else
     echo "   Note: Install with: brew install jq"
 fi
 
+# 9. Check priority labels
+echo "9. Priority Labels..."
+if [ -n "$REPO" ]; then
+    REQUIRED_LABELS=("P: Critical" "P: HIGH" "P: Medium" "P: low")
+    EXISTING_LABELS=$(gh label list -R "$REPO" --json name -q '.[].name' 2>/dev/null || echo "")
+    MISSING_LABELS=()
+
+    for label in "${REQUIRED_LABELS[@]}"; do
+        if ! echo "$EXISTING_LABELS" | grep -qF "$label"; then
+            MISSING_LABELS+=("$label")
+        fi
+    done
+
+    if [ ${#MISSING_LABELS[@]} -eq 0 ]; then
+        pass "All priority labels configured"
+    else
+        warn "Missing labels: ${MISSING_LABELS[*]}"
+        echo "   Fix: Create labels at https://github.com/$REPO/labels"
+    fi
+else
+    warn "Skipped (no repository)"
+fi
+
+# 10. Check issue types
+echo "10. Issue Types..."
+if [ -n "$REPO" ]; then
+    REPO_NAME=$(echo "$REPO" | cut -d'/' -f2)
+    # GitHub's issue types are a newer feature - check via GraphQL if available
+    ISSUE_TYPES=$(gh api graphql -f query='
+      query($owner: String!, $name: String!) {
+        repository(owner: $owner, name: $name) {
+          issueTypes(first: 10) {
+            nodes { name }
+          }
+        }
+      }
+    ' -f owner="$OWNER" -f name="$REPO_NAME" --jq '.data.repository.issueTypes.nodes[].name' 2>/dev/null || echo "")
+
+    if [ -n "$ISSUE_TYPES" ]; then
+        REQUIRED_TYPES=("Bug" "Feature" "Task")
+        MISSING_TYPES=()
+        for type in "${REQUIRED_TYPES[@]}"; do
+            if ! echo "$ISSUE_TYPES" | grep -qF "$type"; then
+                MISSING_TYPES+=("$type")
+            fi
+        done
+
+        if [ ${#MISSING_TYPES[@]} -eq 0 ]; then
+            pass "Issue types configured: Bug, Feature, Task"
+        else
+            warn "Missing issue types: ${MISSING_TYPES[*]}"
+            echo "   Fix: Enable in repository Settings > Features > Issues > Issue Types"
+        fi
+    else
+        warn "Issue types not available (may require GitHub Team or newer repo)"
+    fi
+else
+    warn "Skipped (no repository)"
+fi
+
 echo ""
 echo "=== Doctor Complete ==="
 

@@ -47,7 +47,7 @@ from typing import Optional
 
 
 # Priority labels in order (highest to lowest)
-PRIORITY_ORDER = ["priority:critical", "priority:high", "priority:medium", "priority:low"]
+PRIORITY_ORDER = ["P: Critical", "P: HIGH", "P: Medium", "P: low"]
 
 # Columns where agent can pickup work
 PICKUP_COLUMNS = ["todo", "dev ready"]
@@ -100,7 +100,7 @@ def get_priority_rank(issue: dict) -> int:
     """Get priority rank (lower = higher priority)."""
     labels = [l["name"].lower() for l in issue.get("labels", [])]
     for i, priority in enumerate(PRIORITY_ORDER):
-        if priority in labels:
+        if priority.lower() in labels:
             return i
     return len(PRIORITY_ORDER)  # No priority label = lowest
 

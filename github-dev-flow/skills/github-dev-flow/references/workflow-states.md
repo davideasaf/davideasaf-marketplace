@@ -101,12 +101,20 @@ The agent **MUST** stop and wait at these points:
 
 Issues are picked up in priority order:
 
-1. `priority:critical` - Blocking issues, production bugs
-2. `priority:high` - Important features, significant bugs
-3. `priority:medium` - Normal priority work
-4. `priority:low` - Nice-to-have, can wait
+1. `P: Critical` - Production emergencies, blocking issues
+2. `P: HIGH` - Important features, significant bugs
+3. `P: Medium` - Normal priority work (default)
+4. `P: low` - Nice-to-have, can wait
 
 If no priority label exists, issues are sorted by creation date (oldest first).
+
+## Issue Types
+
+GitHub native issue types are used to classify issues:
+
+- **Bug** - An unexpected problem or behavior
+- **Feature** - A request, idea, or new functionality
+- **Task** - A specific piece of work
 
 ## Confidence Scores
 

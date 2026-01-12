@@ -1,6 +1,6 @@
 ---
 name: create-gh-issue
-description: Creates well-documented GitHub issues with evidence collection. For bugs, validates and reproduces using Claude Chrome, captures screenshots/GIFs as evidence. For features, assesses fit (UX consistency, technical feasibility, scope, roadmap alignment) and enhances with suggestions. Auto-detects repository, applies appropriate labels (bug/enhancement + needs-triage), and adds to project board "Todo" column. This skill should be used when the user reports a bug, describes unexpected behavior, requests a new feature, or asks to create/log/file a GitHub issue.
+description: Creates well-documented GitHub issues with evidence collection. For bugs, validates and reproduces using Claude Chrome, captures screenshots/GIFs as evidence. For features, assesses fit (UX consistency, technical feasibility, scope, roadmap alignment) and enhances with suggestions. Auto-detects repository, applies priority labels (P: Critical/HIGH/Medium/low), sets GitHub native issue type (Bug/Feature/Task), and adds to project board "Todo" column. This skill should be used when the user reports a bug, describes unexpected behavior, requests a new feature, or asks to create/log/file a GitHub issue.
 ---
 
 # Create GitHub Issue
@@ -69,11 +69,12 @@ Returns markdown image syntax for embedding in the issue.
 Use the bug report template from `references/issue-templates.md`:
 
 ```bash
-uv run python scripts/create_issue.py bug "Issue title" --body-file issue.md
+uv run python scripts/create_issue.py "Issue title" --type bug --priority high --body-file issue.md
 ```
 
 The script:
-- Adds `bug` and `needs-triage` labels
+- Sets GitHub native issue type (Bug)
+- Adds priority label (P: HIGH, P: Medium, etc.)
 - Creates the issue
 - Moves to project board "Todo" column
 
@@ -114,11 +115,12 @@ Based on the assessment, provide:
 Use the feature request template from `references/issue-templates.md`:
 
 ```bash
-uv run python scripts/create_issue.py feature "Feature title" --body-file issue.md
+uv run python scripts/create_issue.py "Feature title" --type feature --body-file issue.md
 ```
 
 The script:
-- Adds `enhancement` and `needs-triage` labels
+- Sets GitHub native issue type (Feature)
+- Adds priority label (defaults to P: Medium)
 - Creates the issue
 - Moves to project board "Todo" column
 
@@ -149,21 +151,33 @@ Files are stored in `.github/issue-assets/` with content-based naming.
 
 ### create_issue.py
 
-Create issue with labels and project board:
+Create issue with priority labels, issue type, and project board:
 
 ```bash
-# Bug issue
-uv run python scripts/create_issue.py bug "Title" --body "Description..."
+# Bug issue with high priority
+uv run python scripts/create_issue.py "Title" --type bug --priority high --body "Description..."
 
-# Feature issue from file
-uv run python scripts/create_issue.py feature "Title" --body-file issue.md
+# Feature issue with default priority (medium)
+uv run python scripts/create_issue.py "Title" --type feature --body-file issue.md
+
+# Task with critical priority
+uv run python scripts/create_issue.py "Urgent task" --type task --priority critical --body "..."
 
 # Additional labels
-uv run python scripts/create_issue.py bug "Title" --body "..." --label priority:high
+uv run python scripts/create_issue.py "Title" --type bug --body "..." --label team:frontend
 
 # Skip project board
-uv run python scripts/create_issue.py bug "Title" --body "..." --no-project
+uv run python scripts/create_issue.py "Title" --type bug --body "..." --no-project
 ```
+
+**Options:**
+- `--type, -t`: GitHub native issue type (`bug`, `feature`, `task`)
+- `--priority, -p`: Priority label (`critical`, `high`, `medium`, `low`). Default: `medium`
+- `--body, -b`: Issue body text
+- `--body-file, -f`: Read issue body from file
+- `--label, -l`: Additional labels (repeatable)
+- `--no-project`: Skip project board integration
+- `--project-status`: Project board column (default: `todo`)
 
 ## Project Board Integration
 
