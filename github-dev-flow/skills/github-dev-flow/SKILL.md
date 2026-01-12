@@ -190,6 +190,73 @@ To implement an approved plan:
 
 7. **STOP** - Wait for human review
 
+### Review Feedback (Review → Dev Ready → Review)
+
+When a human reviewer has feedback on a PR:
+
+1. **Human provides feedback**
+   - Comment on the GitHub issue OR the PR with change requests
+   - Move issue back to "Dev Ready" column
+
+2. **Agent picks up returning issue**
+
+   When picking up from Dev Ready, first check if this is a returning issue:
+   ```bash
+   # Check for existing work (shows branch, PR, comments)
+   uv run python scripts/gh_dev.py show 42
+
+   # Check for open PR
+   gh pr list --head issue/42-* --state open
+   ```
+
+   Signs of a returning issue:
+   - Existing branch `issue/<number>-*` exists
+   - Open PR exists for the issue
+   - Previous implementation/completion comments exist
+
+   **If returning issue:** Read all feedback before making changes
+   **If new issue:** Proceed with normal implementation
+
+3. **Agent reads all feedback**
+   ```bash
+   # Review issue comments
+   gh issue view 42 --comments
+
+   # Review PR comments (if PR exists)
+   gh pr view <pr-number> --comments
+   ```
+
+4. **Agent addresses feedback**
+   ```bash
+   # Navigate to existing worktree (create if needed - idempotent)
+   uv run python scripts/worktree_manager.py create 42
+   cd ../<repo>-issue-42-<slug>/
+
+   # Pull latest changes
+   git pull origin issue/42-<slug>
+
+   # Make changes addressing feedback
+   # ... implement fixes ...
+
+   # Commit and push (PR auto-updates)
+   git add .
+   git commit -m "Address review feedback: <summary>"
+   git push
+   ```
+
+5. **Agent posts update and moves back to Review**
+   ```bash
+   # Comment on issue with changes made
+   uv run python scripts/gh_dev.py comment 42 --body "Addressed feedback: <summary of changes>"
+
+   # Move back to Review
+   uv run python scripts/project_board.py move 42 --to review
+   ```
+
+6. **STOP** - Wait for human to re-review
+
+This cycle repeats until the human merges the PR.
+
 ## Plan Template
 
 When creating implementation plans, follow this structure:

@@ -8,20 +8,25 @@
 └─────────────────────────────────────────────────────────────────────────┘
 
     ┌──────────┐     Agent      ┌───────────┐     Human     ┌─────────────┐
-    │   Todo   │ ────────────→  │ Planning  │ ────────────→ │Dev Ready│
+    │   Todo   │ ────────────→  │ Planning  │ ────────────→ │ Dev Ready   │
     └──────────┘   (plan)       └───────────┘   (approve)   └─────────────┘
-         ↑                            │                           │
-         │                            │ (feedback)                │
-         │                            ↓                           │
-    New issues              Agent updates plan,                   │
-    from backlog            stays in Planning                     │
-                                                                  │
-                                                                  │ Agent
-                                                                  │ (implement)
-                                                                  ↓
+         ↑                            │                           │  ↑
+         │                            │ (feedback)                │  │
+         │                            ↓                           │  │
+    New issues              Agent updates plan,                   │  │ Human
+    from backlog            stays in Planning                     │  │ (feedback)
+                                                                  │  │
+                                                                  │  │ Agent
+                                                                  │  │ (implement)
+                                                                  ↓  │
     ┌──────────┐     Human      ┌───────────┐     Agent     ┌─────────────┐
     │   Done   │ ←───────────── │  Review   │ ←──────────── │ In Progress │
     └──────────┘   (merge)      └───────────┘  (complete)   └─────────────┘
+                                      │                           ↑
+                                      │                           │
+                                      └───────────────────────────┘
+                                            Human moves back
+                                            (request changes)
 ```
 
 ## Column Definitions
@@ -44,9 +49,11 @@
 
 ### Dev Ready
 - **Owner**: Agent pickup queue
-- **Entry**: Human approved plan
+- **Entry**: Human approved plan OR human requested changes on PR
 - **Exit**: Agent begins implementation
-- **Agent Action**: Pick up, create worktree, implement, create PR
+- **Agent Action**:
+  - Check if returning issue (existing branch/PR) → read feedback first
+  - Pick up, create worktree, implement, create/update PR
 
 ### In Progress
 - **Owner**: Agent (active work)
@@ -61,13 +68,13 @@
 ### Review
 - **Owner**: Human review
 - **Entry**: Agent submits PR with completion comment
-- **Exit**: Human merges or requests changes
+- **Exit**: Human merges OR moves back to Dev Ready for changes
 - **Agent Action**: **STOP** - Wait for human review
 - **Human Action**:
   - Review code changes
   - Run CI/CD pipeline
-  - Request changes if needed
-  - Merge PR to main
+  - If changes needed: Comment feedback, move to "Dev Ready"
+  - If approved: Merge PR to main
 
 ### Done
 - **Owner**: Archive
@@ -96,6 +103,7 @@ The agent **MUST** stop and wait at these points:
 |-------|----------------------|
 | Planning → Dev Ready | Review plan, approve or provide feedback |
 | Review → Done | Review PR, run tests, merge to main |
+| Review → Dev Ready | Request changes: comment feedback, move back to Dev Ready |
 
 ## Priority Labels
 
