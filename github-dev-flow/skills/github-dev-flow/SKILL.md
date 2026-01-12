@@ -259,7 +259,23 @@ This cycle repeats until the human merges the PR.
 
 ## Plan Template
 
-When creating implementation plans, follow this structure:
+When creating implementation plans, follow this structure.
+
+**Include the UI/UX Preview section when:**
+- Issue involves visual/styling changes
+- New UI components are being added
+- Layout or user flow is changing
+- Issue has attached mockups or screenshots
+
+**Skip the UI/UX Preview section when:**
+- Backend-only changes
+- API/data layer work
+- Infrastructure/config changes
+
+**Tip:** Download attached images from the issue for reference:
+```bash
+uv run python scripts/gh_dev.py images 42 --output ./issue-images/
+```
 
 ```markdown
 ## Implementation Plan for #<number>: <title>
@@ -290,6 +306,28 @@ When creating implementation plans, follow this structure:
 **For Backend tasks:**
 - Unit tests: `tests/unit/` - <functions tested>
 - Integration tests: `tests/integration/` - <flows tested>
+
+### UI/UX Preview (for visual changes)
+
+**Current State:**
+<screenshot or description of current UI>
+
+**Proposed Changes:**
+- Component: `<ComponentName>` → <what changes>
+- Layout: <layout modifications>
+- Styling: <color/spacing/typography changes>
+
+**Visual Mockup:**
+```
+┌─────────────────────────────┐
+│  <ASCII representation>     │
+│  of the proposed UI         │
+└─────────────────────────────┘
+```
+
+**User Flow Impact:**
+1. User does X → sees Y (new/changed)
+2. User does Z → sees W (unchanged)
 
 ### Risks & Considerations
 - <Potential blockers or dependencies>

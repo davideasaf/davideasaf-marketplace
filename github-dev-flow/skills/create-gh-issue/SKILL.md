@@ -19,6 +19,43 @@ A skill for creating well-documented GitHub issues with evidence collection and 
 User Report → Classify (Bug/Feature) → Investigate → Document → Create Issue → Add to Board
 ```
 
+## Auto-Classification
+
+When creating an issue, analyze the user's description to determine type and priority automatically.
+
+### Type Selection
+
+| If description mentions... | Select Type |
+|---------------------------|-------------|
+| "bug", "broken", "error", "crash", "not working", "fails", "wrong" | Bug |
+| "add", "new", "feature", "enhance", "would be nice", "can we", "I want" | Feature |
+| "update", "change", "refactor", "migrate", "deploy", "cleanup" | Task |
+
+**Default:** Feature (if unclear)
+
+### Priority Selection
+
+| If description mentions... | Select Priority |
+|---------------------------|-----------------|
+| "urgent", "critical", "production down", "blocking", "ASAP", "emergency" | Critical |
+| "important", "soon", "high priority", "affects many users", "customers impacted" | High |
+| "would be nice", "eventually", "low priority", "minor", "when you have time" | Low |
+
+**Default:** Medium (if unclear)
+
+### Example
+
+User: "The checkout button is broken on mobile - customers can't complete orders"
+
+Analysis:
+- **Type:** Bug (keywords: "broken", "can't")
+- **Priority:** High (keywords: "customers", "can't complete orders")
+
+```bash
+uv run python scripts/create_issue.py "Checkout button broken on mobile" \
+  --type bug --priority high --body "..."
+```
+
 ## Bug Report Workflow
 
 When a user reports a bug or unexpected behavior:
