@@ -1,7 +1,7 @@
 {
   "name": "linear-dev-flow",
   "description": "Complete Linear issue lifecycle management: manage development workflows with workflow state integration, worktree isolation, and structured planning phases. Agent creates plans in Todo, implements from Dev Ready, and delivers to In Review for human validation.",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "author": {
     "name": "David Asaf"
   },
