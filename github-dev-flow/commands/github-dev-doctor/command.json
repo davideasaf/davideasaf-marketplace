@@ -1,5 +1,0 @@
-{
-  "name": "github-dev-doctor",
-  "description": "Check environment setup for github-dev-flow - validates GitHub CLI, authentication, project board configuration, and Python dependencies",
-  "execute": "./doctor.sh"
-}
