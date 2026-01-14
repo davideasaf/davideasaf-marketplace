@@ -18,6 +18,11 @@
       "name": "monarch-money",
       "source": "./monarch-money",
       "description": "Claude toolkit to interact, categorize, and plan using Monarch Money"
+    },
+    {
+      "name": "linear-dev-flow",
+      "source": "./linear-dev-flow",
+      "description": "Manages Linear issue-based development workflows with workflow state integration, worktree isolation, and structured planning phases. Agent creates plans in Todo, implements from Dev Ready, and delivers to In Review for human validation."
     }
   ]
 }
