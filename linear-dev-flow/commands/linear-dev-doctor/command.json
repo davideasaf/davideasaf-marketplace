@@ -1,0 +1,5 @@
+{
+  "name": "linear-dev-doctor",
+  "description": "Check environment setup for linear-dev-flow - validates LINEAR_API_KEY, team access, workflow states, and Python dependencies",
+  "execute": "./doctor.sh"
+}
