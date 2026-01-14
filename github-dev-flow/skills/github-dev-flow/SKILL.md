@@ -469,6 +469,7 @@ The report shows:
 - `gh auth status` shows logged in
 - Project scope enabled: `gh auth refresh -s project`
 - Python 3.10+ with `uv` package manager
+- **git-worktree skill** installed at `~/.claude/skills/git-worktree/` (for worktree creation with `.worktreeinclude` support)
 
 ## GitHub Actions Integration
 

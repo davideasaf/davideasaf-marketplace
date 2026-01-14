@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """
-Git worktree manager with .worktreeinclude support.
+Git worktree manager for GitHub issues.
 
-Creates isolated worktrees for issue development, copying gitignored files
-that are specified in .worktreeinclude (following Claude Desktop convention).
+Creates isolated worktrees for issue development using the shared git-worktree skill
+for actual worktree creation and .worktreeinclude file copying.
 
 Usage:
     # Create worktree for issue
@@ -16,19 +16,24 @@ Usage:
     worktree_manager.py remove 42
 
 Environment:
-    Requires git and gh CLI.
+    Requires git, gh CLI, and the git-worktree skill installed at ~/.claude/skills/git-worktree/
+
+Dependencies:
+    This script requires the git-worktree skill to be installed.
+    Install it from: https://github.com/davideasaf-marketplace (or copy to ~/.claude/skills/git-worktree/)
 """
 
 import argparse
-import fnmatch
-import json
 import os
 import re
-import shutil
 import subprocess
 import sys
 from pathlib import Path
 from typing import Optional
+
+
+# Path to shared git-worktree skill
+GIT_WORKTREE_SKILL = Path.home() / ".claude" / "skills" / "git-worktree" / "scripts" / "worktree_manager.py"
 
 
 def run_cmd(cmd: list[str], capture: bool = True, check: bool = True, cwd: Optional[Path] = None) -> str:
@@ -59,20 +64,6 @@ def get_repo_name() -> str:
     return get_repo_root().name
 
 
-def get_default_branch() -> str:
-    """Get default branch (main or master)."""
-    try:
-        result = run_git("symbolic-ref", "refs/remotes/origin/HEAD")
-        return result.split("/")[-1]
-    except subprocess.CalledProcessError:
-        # Fallback: check if main exists
-        try:
-            run_git("rev-parse", "--verify", "main")
-            return "main"
-        except subprocess.CalledProcessError:
-            return "master"
-
-
 def slugify(text: str, max_length: int = 50) -> str:
     """Convert text to URL-friendly slug."""
     slug = text.lower()
@@ -96,205 +87,69 @@ def branch_name_for_issue(number: int) -> str:
     return f"issue/{number}-{slug}"
 
 
-def read_worktreeinclude(repo_root: Path) -> list[str]:
-    """Read .worktreeinclude patterns."""
-    include_file = repo_root / ".worktreeinclude"
-    if not include_file.exists():
-        return []
-
-    patterns = []
-    for line in include_file.read_text().splitlines():
-        line = line.strip()
-        if line and not line.startswith("#"):
-            patterns.append(line)
-    return patterns
-
-
-def get_gitignored_files(repo_root: Path) -> set[Path]:
-    """Get set of gitignored file paths."""
-    try:
-        result = run_cmd(
-            ["git", "ls-files", "--others", "--ignored", "--exclude-standard", "-z"],
-            check=False,
-            cwd=repo_root
-        )
-        if not result:
-            return set()
-
-        files = set()
-        for path_str in result.split('\0'):
-            if path_str:
-                files.add(repo_root / path_str)
-        return files
-    except Exception:
-        return set()
-
-
-def matches_pattern(path: Path, pattern: str, repo_root: Path) -> bool:
-    """Check if path matches a .worktreeinclude pattern."""
-    rel_path = str(path.relative_to(repo_root))
-
-    # Handle directory patterns (ending with /)
-    if pattern.endswith('/'):
-        dir_pattern = pattern.rstrip('/')
-        return rel_path.startswith(dir_pattern + '/') or rel_path == dir_pattern
-
-    # Handle glob patterns
-    if '*' in pattern:
-        return fnmatch.fnmatch(rel_path, pattern)
-
-    # Exact match or directory match
-    return rel_path == pattern or rel_path.startswith(pattern + '/')
-
-
-def copy_worktree_files(repo_root: Path, worktree_path: Path) -> None:
-    """Copy files matching .worktreeinclude patterns that are also gitignored."""
-    patterns = read_worktreeinclude(repo_root)
-    if not patterns:
-        print("  No .worktreeinclude file found, skipping file copy")
-        return
-
-    gitignored = get_gitignored_files(repo_root)
-    if not gitignored:
-        print("  No gitignored files found to copy")
-        return
-
-    copied = set()
-
-    for gitignored_path in gitignored:
-        for pattern in patterns:
-            if matches_pattern(gitignored_path, pattern, repo_root):
-                # Calculate destination path
-                rel_path = gitignored_path.relative_to(repo_root)
-                dst = worktree_path / rel_path
-
-                # Skip if already copied (from parent directory copy)
-                if dst in copied:
-                    continue
-
-                dst.parent.mkdir(parents=True, exist_ok=True)
-
-                if gitignored_path.is_dir():
-                    if not dst.exists():
-                        shutil.copytree(gitignored_path, dst, dirs_exist_ok=True)
-                        copied.add(dst)
-                        print(f"  Copied directory: {rel_path}")
-                elif gitignored_path.is_file():
-                    shutil.copy2(gitignored_path, dst)
-                    copied.add(dst)
-                    print(f"  Copied: {rel_path}")
-
-                break  # Don't check more patterns for this file
-
-    if not copied:
-        print("  No matching files found to copy")
+def check_git_worktree_skill() -> bool:
+    """Check if git-worktree skill is installed."""
+    if not GIT_WORKTREE_SKILL.exists():
+        print(f"ERROR: git-worktree skill not found at {GIT_WORKTREE_SKILL}")
+        print("Please install the git-worktree skill:")
+        print("  1. Clone from davideasaf-marketplace, or")
+        print("  2. Copy to ~/.claude/skills/git-worktree/")
+        return False
+    return True
 
 
 def create_worktree(number: int, path: Optional[str] = None) -> tuple[str, Path]:
     """Create a worktree for an issue."""
+    if not check_git_worktree_skill():
+        sys.exit(1)
+
+    # Generate branch name from issue
+    branch = branch_name_for_issue(number)
+    print(f"Creating worktree for issue #{number}")
+    print(f"Branch: {branch}")
+
+    # Calculate worktree path if not provided
     repo_root = get_repo_root()
     repo_name = get_repo_name()
-    branch = branch_name_for_issue(number)
-
     if not path:
-        # Create worktree in parent directory
         worktree_path = repo_root.parent / f"{repo_name}-{branch.replace('/', '-')}"
     else:
         worktree_path = Path(path).resolve()
 
-    if worktree_path.exists():
-        print(f"Worktree already exists: {worktree_path}")
-        return branch, worktree_path
+    # Delegate to shared git-worktree skill
+    cmd = ["uv", "run", "python", str(GIT_WORKTREE_SKILL), "create", branch]
+    if path:
+        cmd.extend(["--path", path])
 
-    # Get default branch
-    default_branch = get_default_branch()
-
-    # Check if branch already exists
-    try:
-        run_git("rev-parse", "--verify", branch)
-        # Branch exists, just add worktree
-        run_git("worktree", "add", str(worktree_path), branch)
-        print(f"Created worktree from existing branch: {branch}")
-    except subprocess.CalledProcessError:
-        # Branch doesn't exist, create new branch from default
-        run_git("worktree", "add", "-b", branch, str(worktree_path), default_branch)
-        print(f"Created worktree with new branch: {branch}")
-
-    print(f"Worktree path: {worktree_path}")
-
-    # Copy gitignored files from .worktreeinclude
-    print("\nCopying gitignored files from .worktreeinclude:")
-    copy_worktree_files(repo_root, worktree_path)
+    subprocess.run(cmd, check=True)
 
     return branch, worktree_path
 
 
 def list_worktrees() -> None:
-    """List all worktrees."""
-    result = run_git("worktree", "list", "--porcelain")
+    """List all worktrees using shared skill."""
+    if not check_git_worktree_skill():
+        sys.exit(1)
 
-    worktrees = []
-    current = {}
-
-    for line in result.splitlines():
-        if line.startswith("worktree "):
-            if current:
-                worktrees.append(current)
-            current = {"path": line[9:]}
-        elif line.startswith("HEAD "):
-            current["head"] = line[5:]
-        elif line.startswith("branch "):
-            current["branch"] = line[7:].replace("refs/heads/", "")
-        elif line == "bare":
-            current["bare"] = True
-        elif line == "detached":
-            current["detached"] = True
-
-    if current:
-        worktrees.append(current)
-
-    print("Active worktrees:")
-    for wt in worktrees:
-        path = wt.get("path", "unknown")
-        branch = wt.get("branch", "")
-
-        if wt.get("bare"):
-            print(f"  {path} (bare)")
-        elif wt.get("detached"):
-            head = wt.get("head", "unknown")[:8]
-            print(f"  {path} (detached at {head})")
-        else:
-            print(f"  {path} [{branch}]")
+    subprocess.run(["uv", "run", "python", str(GIT_WORKTREE_SKILL), "list"], check=True)
 
 
 def remove_worktree(number: int) -> None:
     """Remove worktree for an issue."""
-    repo_root = get_repo_root()
-    repo_name = get_repo_name()
+    if not check_git_worktree_skill():
+        sys.exit(1)
+
+    # Generate branch name from issue
     branch = branch_name_for_issue(number)
-    worktree_path = repo_root.parent / f"{repo_name}-{branch.replace('/', '-')}"
+    print(f"Removing worktree for issue #{number}")
+    print(f"Branch: {branch}")
 
-    if not worktree_path.exists():
-        print(f"Worktree not found: {worktree_path}")
-        # Try to find by branch in worktree list
-        result = run_git("worktree", "list", "--porcelain")
-        for line in result.splitlines():
-            if line.startswith("worktree "):
-                path = line[9:]
-            elif line.startswith("branch ") and branch in line:
-                worktree_path = Path(path)
-                break
-        else:
-            print(f"Could not find worktree for issue #{number}")
-            return
-
-    # Remove worktree
-    run_git("worktree", "remove", str(worktree_path), "--force")
-    print(f"Removed worktree: {worktree_path}")
+    # Delegate to shared git-worktree skill
+    subprocess.run(["uv", "run", "python", str(GIT_WORKTREE_SKILL), "remove", branch], check=True)
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Git worktree manager for issues")
+    parser = argparse.ArgumentParser(description="Git worktree manager for GitHub issues")
     subparsers = parser.add_subparsers(dest="command", required=True)
 
     # create
@@ -312,7 +167,7 @@ def main():
     args = parser.parse_args()
 
     if args.command == "create":
-        branch, path = create_worktree(args.number, args.path)
+        branch, path = create_worktree(args.number, getattr(args, 'path', None))
         print(f"\nTo start working:")
         print(f"  cd {path}")
 

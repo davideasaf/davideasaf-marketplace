@@ -328,6 +328,7 @@ uv run python scripts/linear_dev.py move ASA-42 --to "Dev Ready"
 - `LINEAR_API_KEY` environment variable set
 - Python 3.10+ with `uv` package manager
 - Git with worktree support (v2.5+)
+- **git-worktree skill** installed at `~/.claude/skills/git-worktree/` (for worktree creation with `.worktreeinclude` support)
 
 Get your API key from: Linear Settings → API → Personal API Keys
 
