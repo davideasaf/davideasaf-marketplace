@@ -217,7 +217,10 @@ def list_issues(
       issues(
         filter: {{ {filter_str} }}
         first: {limit}
-        orderBy: priority
+        sort: [
+          {{ priority: {{ order: Ascending, noPriorityFirst: false }} }},
+          {{ createdAt: {{ order: Ascending }} }}
+        ]
       ) {{
         nodes {{
           id
