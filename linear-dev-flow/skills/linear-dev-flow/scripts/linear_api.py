@@ -5,9 +5,21 @@ Linear GraphQL API client.
 Provides functions for interacting with Linear's API for issue management,
 workflow state transitions, and team operations.
 
-Environment:
-    LINEAR_API_KEY: Personal API key from Linear Settings → API
-    LINEAR_TEAM_KEY: (Optional) Team key like "ASA", defaults to first team
+Environment Variables (in priority order):
+    Authentication (one required):
+        LINEAR_OAUTH_ACCESS_TOKEN: Pre-generated OAuth token (lin_oauth_*)
+        LINEAR_OAUTH_CLIENT_ID + LINEAR_OAUTH_CLIENT_SECRET: Client Credentials flow
+        LINEAR_API_KEY: Personal API key (lin_api_*) from Linear Settings → API
+
+    Optional:
+        LINEAR_TEAM_KEY: Team key like "ASA", defaults to first team
+
+Authentication Methods:
+    1. Pre-generated token: Set LINEAR_OAUTH_ACCESS_TOKEN directly
+    2. Client Credentials: Set LINEAR_OAUTH_CLIENT_ID and LINEAR_OAUTH_CLIENT_SECRET
+       - Automatically exchanges credentials for a 30-day app token
+       - Posts as the OAuth application, not a personal user
+    3. Personal API key: Set LINEAR_API_KEY (posts as your user)
 """
 
 import json
@@ -15,25 +27,146 @@ import os
 import sys
 import urllib.request
 import urllib.error
+import urllib.parse
 from typing import Any, Optional
 
 
 LINEAR_API_URL = "https://api.linear.app/graphql"
+LINEAR_TOKEN_URL = "https://api.linear.app/oauth/token"
+
+# Module-level cache for client credentials token
+_cached_token: Optional[str] = None
 
 
-def get_api_key() -> str:
-    """Get Linear API key from environment."""
-    key = os.environ.get("LINEAR_API_KEY")
-    if not key:
-        print("Error: LINEAR_API_KEY environment variable not set", file=sys.stderr)
-        print("Get your API key from: Linear Settings → API → Personal API Keys", file=sys.stderr)
+def _exchange_client_credentials() -> str:
+    """
+    Exchange OAuth client credentials for an access token.
+
+    Uses the Client Credentials grant type to obtain a 30-day app token.
+
+    Returns:
+        Access token string.
+
+    Raises:
+        SystemExit on failure.
+    """
+    client_id = os.environ.get("LINEAR_OAUTH_CLIENT_ID")
+    client_secret = os.environ.get("LINEAR_OAUTH_CLIENT_SECRET")
+
+    if not client_id or not client_secret:
+        print("Error: Both LINEAR_OAUTH_CLIENT_ID and LINEAR_OAUTH_CLIENT_SECRET required", file=sys.stderr)
         sys.exit(1)
-    return key
+
+    # Request body for client credentials grant
+    # Using broad scopes - Linear will limit to what the app has access to
+    payload = urllib.parse.urlencode({
+        "grant_type": "client_credentials",
+        "client_id": client_id,
+        "client_secret": client_secret,
+        "scope": "read,write,issues:create,comments:create",
+    }).encode("utf-8")
+
+    req = urllib.request.Request(
+        LINEAR_TOKEN_URL,
+        data=payload,
+        headers={
+            "Content-Type": "application/x-www-form-urlencoded",
+        },
+        method="POST"
+    )
+
+    try:
+        with urllib.request.urlopen(req) as response:
+            result = json.loads(response.read().decode("utf-8"))
+    except urllib.error.HTTPError as e:
+        error_body = e.read().decode("utf-8") if e.fp else str(e)
+        print(f"OAuth token exchange failed (HTTP {e.code}): {error_body}", file=sys.stderr)
+        sys.exit(1)
+    except urllib.error.URLError as e:
+        print(f"Network Error during token exchange: {e.reason}", file=sys.stderr)
+        sys.exit(1)
+
+    if "access_token" not in result:
+        print(f"OAuth response missing access_token: {result}", file=sys.stderr)
+        sys.exit(1)
+
+    return result["access_token"]
+
+
+def get_auth_token() -> str:
+    """
+    Get Linear authentication token from environment.
+
+    Priority:
+        1. LINEAR_OAUTH_ACCESS_TOKEN - Pre-generated OAuth token
+        2. LINEAR_OAUTH_CLIENT_ID + LINEAR_OAUTH_CLIENT_SECRET - Client Credentials flow
+        3. LINEAR_API_KEY - Personal API key (for user auth)
+
+    Returns:
+        Authentication token to use in Authorization header.
+    """
+    global _cached_token
+
+    # Check for pre-generated OAuth token first
+    oauth_token = os.environ.get("LINEAR_OAUTH_ACCESS_TOKEN")
+    if oauth_token:
+        return oauth_token
+
+    # Check for client credentials (exchange for token)
+    client_id = os.environ.get("LINEAR_OAUTH_CLIENT_ID")
+    client_secret = os.environ.get("LINEAR_OAUTH_CLIENT_SECRET")
+    if client_id and client_secret:
+        # Use cached token if available
+        if _cached_token:
+            return _cached_token
+        # Exchange credentials for token
+        _cached_token = _exchange_client_credentials()
+        return _cached_token
+
+    # Fall back to personal API key
+    api_key = os.environ.get("LINEAR_API_KEY")
+    if api_key:
+        return api_key
+
+    # No credentials found
+    print("Error: No Linear authentication configured", file=sys.stderr)
+    print("Set one of the following:", file=sys.stderr)
+    print("  LINEAR_OAUTH_ACCESS_TOKEN - Pre-generated OAuth token", file=sys.stderr)
+    print("  LINEAR_OAUTH_CLIENT_ID + LINEAR_OAUTH_CLIENT_SECRET - Client Credentials", file=sys.stderr)
+    print("  LINEAR_API_KEY - Personal API key (lin_api_*)", file=sys.stderr)
+    print("", file=sys.stderr)
+    print("Get credentials from: Linear Settings → API", file=sys.stderr)
+    sys.exit(1)
+
+
+def get_auth_method() -> str:
+    """
+    Get the authentication method being used.
+
+    Returns:
+        "oauth_token" if using LINEAR_OAUTH_ACCESS_TOKEN
+        "client_credentials" if using LINEAR_OAUTH_CLIENT_ID + SECRET
+        "api_key" if using LINEAR_API_KEY
+        "none" if no credentials configured
+    """
+    if os.environ.get("LINEAR_OAUTH_ACCESS_TOKEN"):
+        return "oauth_token"
+    if os.environ.get("LINEAR_OAUTH_CLIENT_ID") and os.environ.get("LINEAR_OAUTH_CLIENT_SECRET"):
+        return "client_credentials"
+    if os.environ.get("LINEAR_API_KEY"):
+        return "api_key"
+    return "none"
+
+
+# Backward compatibility alias
+def get_api_key() -> str:
+    """Deprecated: Use get_auth_token() instead."""
+    return get_auth_token()
 
 
 def graphql(query: str, variables: Optional[dict] = None) -> dict:
     """Execute GraphQL query against Linear API."""
-    api_key = get_api_key()
+    auth_token = get_auth_token()
 
     payload = {"query": query}
     if variables:
@@ -46,7 +179,7 @@ def graphql(query: str, variables: Optional[dict] = None) -> dict:
         data=data,
         headers={
             "Content-Type": "application/json",
-            "Authorization": api_key,
+            "Authorization": auth_token,
         },
         method="POST"
     )
@@ -345,6 +478,9 @@ def test_connection() -> bool:
 if __name__ == "__main__":
     # Quick test
     print("Testing Linear API connection...")
+
+    auth_method = get_auth_method()
+    print(f"Auth method: {auth_method}")
 
     viewer = get_viewer()
     print(f"Authenticated as: {viewer['name']} ({viewer['email']})")

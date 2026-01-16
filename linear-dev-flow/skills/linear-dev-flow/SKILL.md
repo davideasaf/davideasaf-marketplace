@@ -325,12 +325,61 @@ uv run python scripts/linear_dev.py move ASA-42 --to "Dev Ready"
 
 ## Environment Requirements
 
-- `LINEAR_API_KEY` environment variable set
+### Authentication (one required, in priority order)
+
+| Method | Variables | Token Validity | Use Case |
+|--------|-----------|----------------|----------|
+| Pre-generated token | `LINEAR_OAUTH_ACCESS_TOKEN` | 10 years | Quick setup with existing token |
+| Client Credentials | `LINEAR_OAUTH_CLIENT_ID` + `LINEAR_OAUTH_CLIENT_SECRET` | 30 days (auto-refreshed) | Recommended for automation |
+| Personal API key | `LINEAR_API_KEY` | Indefinite | Posts as your user account |
+
+#### Client Credentials Setup (Recommended)
+
+For Claude to post as an OAuth application using client credentials:
+
+1. Go to **Linear Settings → API → OAuth Applications**
+2. Create a new OAuth application (or use existing)
+3. Copy the **Client ID** and **Client Secret**
+4. Set both environment variables:
+
+```bash
+export LINEAR_OAUTH_CLIENT_ID="your_client_id_here"
+export LINEAR_OAUTH_CLIENT_SECRET="your_client_secret_here"
+```
+
+The skill automatically exchanges these credentials for a 30-day access token.
+
+#### Pre-generated Token Setup
+
+If you already have a developer token (from Linear's OAuth app settings):
+
+```bash
+export LINEAR_OAUTH_ACCESS_TOKEN="lin_oauth_xxxxx..."
+```
+
+#### Personal API Key Setup
+
+For Claude to post as your personal user:
+
+1. Go to **Linear Settings → API → Personal API Keys**
+2. Create a new API key
+3. Set `LINEAR_API_KEY` to the generated key
+
+```bash
+export LINEAR_API_KEY="lin_api_xxxxx..."
+```
+
+### Optional Configuration
+
+| Variable | Description |
+|----------|-------------|
+| `LINEAR_TEAM_KEY` | Team key (e.g., "ASA"). Defaults to first team if not set. |
+
+### Other Requirements
+
 - Python 3.10+ with `uv` package manager
 - Git with worktree support (v2.5+)
 - **git-worktree skill** installed at `~/.claude/skills/git-worktree/` (for worktree creation with `.worktreeinclude` support)
-
-Get your API key from: Linear Settings → API → Personal API Keys
 
 ## Example Invocations
 

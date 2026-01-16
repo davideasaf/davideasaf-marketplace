@@ -1,5 +1,5 @@
 ---
-description: Check environment setup for linear-dev-flow - validates LINEAR_API_KEY, team access, workflow states, and Python dependencies
+description: Check environment setup for linear-dev-flow - validates Linear authentication (OAuth, client credentials, or API key), team access, workflow states, and Python dependencies
 ---
 
 # Linear Dev Flow Doctor
@@ -16,46 +16,82 @@ echo ""
 
 ERRORS=0
 
-# 1. Check LINEAR_API_KEY
-echo "1. Linear API Key..."
-if [ -n "$LINEAR_API_KEY" ]; then
+# 1. Check Linear Authentication
+echo "1. Linear Authentication..."
+AUTH_TOKEN=""
+AUTH_METHOD=""
+
+if [ -n "$LINEAR_OAUTH_ACCESS_TOKEN" ]; then
+    MASKED_TOKEN="${LINEAR_OAUTH_ACCESS_TOKEN:0:12}..."
+    echo "   ✓ LINEAR_OAUTH_ACCESS_TOKEN set ($MASKED_TOKEN)"
+    echo "   → Using pre-generated OAuth token"
+    AUTH_TOKEN="$LINEAR_OAUTH_ACCESS_TOKEN"
+    AUTH_METHOD="oauth_token"
+elif [ -n "$LINEAR_OAUTH_CLIENT_ID" ] && [ -n "$LINEAR_OAUTH_CLIENT_SECRET" ]; then
+    MASKED_ID="${LINEAR_OAUTH_CLIENT_ID:0:8}..."
+    echo "   ✓ LINEAR_OAUTH_CLIENT_ID set ($MASKED_ID)"
+    echo "   ✓ LINEAR_OAUTH_CLIENT_SECRET set"
+    echo "   → Using Client Credentials flow (will exchange for token)"
+    # Exchange client credentials for token
+    TOKEN_RESPONSE=$(curl -s -X POST https://api.linear.app/oauth/token \
+        -H "Content-Type: application/x-www-form-urlencoded" \
+        -d "grant_type=client_credentials&client_id=$LINEAR_OAUTH_CLIENT_ID&client_secret=$LINEAR_OAUTH_CLIENT_SECRET&scope=read,write,issues:create,comments:create" 2>/dev/null)
+    AUTH_TOKEN=$(echo "$TOKEN_RESPONSE" | grep -o '"access_token":"[^"]*"' | cut -d'"' -f4)
+    if [ -n "$AUTH_TOKEN" ]; then
+        echo "   ✓ Token exchange successful"
+        AUTH_METHOD="client_credentials"
+    else
+        echo "   ✗ Token exchange failed"
+        echo "   Response: $TOKEN_RESPONSE"
+        ERRORS=$((ERRORS + 1))
+    fi
+elif [ -n "$LINEAR_API_KEY" ]; then
     MASKED_KEY="${LINEAR_API_KEY:0:8}..."
     echo "   ✓ LINEAR_API_KEY set ($MASKED_KEY)"
+    echo "   → Using personal API key authentication"
+    AUTH_TOKEN="$LINEAR_API_KEY"
+    AUTH_METHOD="api_key"
 else
-    echo "   ✗ LINEAR_API_KEY not set"
-    echo "   Fix: export LINEAR_API_KEY=lin_api_xxxxx"
-    echo "   Get from: Linear Settings → API → Personal API Keys"
+    echo "   ✗ No Linear authentication configured"
+    echo "   Set one of these:"
+    echo "     LINEAR_OAUTH_ACCESS_TOKEN - Pre-generated OAuth token"
+    echo "     LINEAR_OAUTH_CLIENT_ID + LINEAR_OAUTH_CLIENT_SECRET - Client Credentials"
+    echo "     LINEAR_API_KEY - Personal API key (lin_api_*)"
+    echo "   Get from: Linear Settings → API"
     ERRORS=$((ERRORS + 1))
 fi
 
 # 2. Test API connection
 echo "2. Linear API Connection..."
-if [ -n "$LINEAR_API_KEY" ]; then
+if [ -n "$AUTH_TOKEN" ]; then
     RESPONSE=$(curl -s -X POST https://api.linear.app/graphql \
         -H "Content-Type: application/json" \
-        -H "Authorization: $LINEAR_API_KEY" \
+        -H "Authorization: $AUTH_TOKEN" \
         -d '{"query": "{ viewer { id name email } }"}' 2>/dev/null)
 
     if echo "$RESPONSE" | grep -q '"name"'; then
         USER_NAME=$(echo "$RESPONSE" | grep -o '"name":"[^"]*"' | head -1 | cut -d'"' -f4)
         USER_EMAIL=$(echo "$RESPONSE" | grep -o '"email":"[^"]*"' | head -1 | cut -d'"' -f4)
         echo "   ✓ Connected as $USER_NAME ($USER_EMAIL)"
+        if [ "$AUTH_METHOD" = "oauth_token" ] || [ "$AUTH_METHOD" = "client_credentials" ]; then
+            echo "   → Authenticated via OAuth application"
+        fi
     else
         echo "   ✗ API connection failed"
         echo "   Error: $RESPONSE"
         ERRORS=$((ERRORS + 1))
     fi
 else
-    echo "   ✗ Skipped (no API key)"
+    echo "   ✗ Skipped (no authentication configured)"
     ERRORS=$((ERRORS + 1))
 fi
 
 # 3. Check team access
 echo "3. Linear Team Access..."
-if [ -n "$LINEAR_API_KEY" ]; then
+if [ -n "$AUTH_TOKEN" ]; then
     TEAMS_RESPONSE=$(curl -s -X POST https://api.linear.app/graphql \
         -H "Content-Type: application/json" \
-        -H "Authorization: $LINEAR_API_KEY" \
+        -H "Authorization: $AUTH_TOKEN" \
         -d '{"query": "{ teams { nodes { id key name } } }"}' 2>/dev/null)
 
     if echo "$TEAMS_RESPONSE" | grep -q '"nodes"'; then
@@ -67,7 +103,7 @@ if [ -n "$LINEAR_API_KEY" ]; then
         ERRORS=$((ERRORS + 1))
     fi
 else
-    echo "   ✗ Skipped (no API key)"
+    echo "   ✗ Skipped (no authentication configured)"
 fi
 
 # 4. Check Python/uv

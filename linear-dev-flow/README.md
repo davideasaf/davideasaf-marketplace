@@ -49,8 +49,8 @@ Environment diagnostic tool to verify setup.
 ```
 
 Checks:
-- LINEAR_API_KEY environment variable
-- API key validity
+- Linear authentication (OAuth token or API key)
+- API connection validity
 - Team access
 - Required workflow states exist
 - Python/uv installation
@@ -58,10 +58,22 @@ Checks:
 
 ## Setup Requirements
 
-1. **Linear API Key**: Get from Linear Settings → API → Personal API Keys
-2. **Environment Variable**: `export LINEAR_API_KEY=lin_api_xxxxx`
-3. **Python 3.10+**: With `uv` package manager
-4. **Workflow States**: Configure these in your Linear team:
+1. **Linear Authentication** (one of, in priority order):
+   - **Client Credentials** (recommended):
+     ```bash
+     export LINEAR_OAUTH_CLIENT_ID=your_client_id
+     export LINEAR_OAUTH_CLIENT_SECRET=your_client_secret
+     ```
+     - Auto-exchanges for 30-day token, posts as application
+     - Get from: Linear Settings → API → OAuth Applications
+   - **OAuth Token**: `export LINEAR_OAUTH_ACCESS_TOKEN=lin_oauth_xxxxx`
+     - Pre-generated token, posts as application
+     - Get from: Linear Settings → API → OAuth Applications → Developer token
+   - **Personal API Key**: `export LINEAR_API_KEY=lin_api_xxxxx`
+     - Posts as your personal user
+     - Get from: Linear Settings → API → Personal API Keys
+2. **Python 3.10+**: With `uv` package manager
+3. **Workflow States**: Configure these in your Linear team:
    - Backlog
    - Todo
    - Dev Ready
@@ -123,7 +135,15 @@ uv run python scripts/worktree_manager.py create ASA-42
 ## Environment Variables
 
 ```bash
-# Required
+# Authentication (one required, in priority order)
+# Option 1: Client Credentials (recommended - auto-exchanges for 30-day token)
+export LINEAR_OAUTH_CLIENT_ID=your_client_id
+export LINEAR_OAUTH_CLIENT_SECRET=your_client_secret
+
+# Option 2: Pre-generated OAuth token
+export LINEAR_OAUTH_ACCESS_TOKEN=lin_oauth_xxxxx
+
+# Option 3: Personal API key (posts as your user)
 export LINEAR_API_KEY=lin_api_xxxxx
 
 # Optional - defaults to first team if not set
