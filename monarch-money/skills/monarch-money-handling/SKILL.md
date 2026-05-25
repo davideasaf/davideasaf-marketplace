@@ -1,7 +1,7 @@
 ---
 name: monarch-money
-description: Use this single consolidated skill for Monarch Money transaction management: find transactions, list categories, split receipts, categorize or update transactions, add itemized notes, review needs-review transactions, and process Amazon refunds. Trigger this for any Monarch Money, budgeting transaction, receipt splitting, refund review, or transaction categorization request.
-version: 1.0.1
+description: 'Use this single consolidated skill for Monarch Money transaction management: find transactions, list categories, split receipts, categorize or update transactions, add itemized notes, review needs-review transactions, and process Amazon refunds. Trigger this for any Monarch Money, budgeting transaction, receipt splitting, refund review, or transaction categorization request.'
+version: '1.0.1'
 ---
 
 # Monarch Money
