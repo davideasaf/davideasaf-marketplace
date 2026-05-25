@@ -1,6 +1,6 @@
 {
   "name": "monarch-money-skill",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "TypeScript wrapper scripts for Monarch Money integration",
   "scripts": {
     "build": "tsc",

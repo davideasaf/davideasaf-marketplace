@@ -1,21 +1,21 @@
 ---
 name: monarch-money
 description: 'Use this single consolidated skill for Monarch Money transaction management: find transactions, list categories, split receipts, categorize or update transactions, add itemized notes, review needs-review transactions, and process Amazon refunds. Trigger this for any Monarch Money, budgeting transaction, receipt splitting, refund review, or transaction categorization request.'
-version: '1.0.1'
+version: '1.0.2'
 ---
 
 # Monarch Money
 
-This is the one user-facing skill for managing Asaf's Monarch Money data. Use it for receipt splitting, transaction search, categorization, transaction updates, notes, review cleanup, and Amazon refund workflows.
+This is the user-facing skill for managing Monarch Money data. Use it for receipt splitting, transaction search, categorization, transaction updates, notes, review cleanup, and Amazon refund workflows.
 
 Do not surface generic dependency skills such as dotenv or dotenvx as separate Monarch capabilities. Environment handling is only implementation detail for this skill.
 
 ## Working Directory
 
-Run commands from this skill directory:
+Run commands from the directory that contains this `SKILL.md` file:
 
 ```bash
-cd /Users/dasaf/.claude/plugins/marketplaces/davideasaf-marketplace/monarch-money/skills/monarch-money-handling
+cd <path-to-this-skill-directory>
 ```
 
 ## Authentication
@@ -92,20 +92,7 @@ Use this when the user wants to clean up uncategorized or needs-review transacti
 4. Present ambiguous items in small batches with merchant, date, amount, current category, suggested category, and reason.
 5. After decisions, update the transactions and capture reusable decisions when useful.
 
-For personal finance context, consult the Obsidian vault before asking about ambiguous items:
-
-```text
-/Users/dasaf/Library/Mobile Documents/iCloud~md~obsidian/Documents/asaf_obsidian
-```
-
-Start with:
-
-- `99 - System/Agent Memory/Financial/Monarch Review Memory.md`
-- `99 - System/Agent Memory/Financial/Asaf Family Financial Overview.md`
-- `99 - System/Agent Memory/Properties/Tulum Properties.md`
-- `99 - System/Agent Memory/Capabilities/Budget and Financial Automation.md`
-
-Use vault context as decision support. Prefer precise raw Plaid patterns over broad cleaned merchant names.
+If the current workspace includes durable finance memory, household notes, or transaction-review rules, consult those before asking about ambiguous items. Use local context as decision support only; prefer precise raw Plaid patterns over broad cleaned merchant names.
 
 ## Amazon Refund Workflow
 
