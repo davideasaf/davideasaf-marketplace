@@ -1,268 +1,50 @@
-# Monarch Money TypeScript Scripts
+# Monarch Money Scripts
 
-These TypeScript scripts provide a command-line interface to the Monarch Money API using the [monarchmoney-ts](https://github.com/keithah/monarchmoney-ts) library.
+Run these commands from the skill directory, the directory that contains `SKILL.md`.
 
-## Setup
+The primary scripts use saved Monarch sessions when available and fall back to:
 
-1. **Install dependencies:**
-   ```bash
-   cd .claude/skills/monarch-money-handling
-   npm install
-   ```
+- `MONARCH_EMAIL`
+- `MONARCH_PASSWORD`
+- `MONARCH_MFA_SECRET`
 
-2. **Set environment variables:**
-   ```bash
-   export MONARCH_EMAIL="your-email@example.com"
-   export MONARCH_PASSWORD="your-password"
-   ```
+Do not commit `.env`, `.cache`, saved sessions, exports, or scraped customer data.
 
-   Or create a `.env` file in this directory:
-   ```
-   MONARCH_EMAIL=your-email@example.com
-   MONARCH_PASSWORD=your-password
-   ```
+## Current Commands
 
-## Available Scripts
+| Command | Purpose |
+| --- | --- |
+| `npm run find -- --id <transaction_id>` | Fetch one transaction by ID. |
+| `npm run find -- --date YYYY-MM-DD --merchant "Merchant"` | Search transactions by date/merchant. |
+| `npm run categories` | List cached category groups and categories. |
+| `npm run categories -- --refresh` | Refresh category cache from Monarch. |
+| `npm run validate -- --splits-file /tmp/splits.json --amount -40.91` | Validate split JSON before mutating Monarch. |
+| `npm run split-receipt -- <transaction_id> --splits-file /tmp/splits.json` | Split a receipt and add itemized notes. |
+| `npm run notes -- <transaction_id> $'Line 1\nLine 2'` | Add or replace transaction notes. |
+| `npm run update -- <transaction_id> --category <category_id>` | Update transaction fields. |
+| `npm run tags -- --list` | List transaction tags. |
+| `npm run tags -- --add <transaction_id> --tags <tag_id>` | Add tag IDs to a transaction. |
+| `npm run bulk-update -- --updates-file /tmp/updates.json` | Apply a batch update file. |
+| `npm run batch-refunds -- --days 14` | Coordinate Amazon refund review. |
+| `npm run amazon-scrape -- --headless` | Scrape Amazon refund transaction data. |
+| `npm run amazon-scrape-items -- --headless` | Scrape Amazon refunds and item details. |
+| `npm run benchmark` | Run the local performance benchmark. |
 
-### Find Transaction
+## Split JSON Shape
 
-Find transactions by ID or by search criteria (date, merchant).
-
-```bash
-# Find by transaction ID
-npm run find -- --id <transaction_id>
-
-# Find by date and merchant
-npm run find -- --date 2024-10-18 --merchant "Walmart"
-
-# Find by date range
-npm run find -- --start-date 2024-10-01 --end-date 2024-10-18 --merchant "Amazon"
-
-# Limit results
-npm run find -- --date 2024-10-18 --limit 50
-```
-
-**Direct usage:**
-```bash
-tsx scripts/find_transaction.ts --id <transaction_id>
-tsx scripts/find_transaction.ts --date 2024-10-18 --merchant "Walmart"
-```
-
-### Get Categories
-
-Retrieve all transaction categories and category groups.
-
-```bash
-# List format (human-readable)
-npm run categories
-
-# JSON format
-npm run categories -- --format json
-```
-
-**Direct usage:**
-```bash
-tsx scripts/get_categories.ts
-tsx scripts/get_categories.ts --format json
-```
-
-### Split Transaction
-
-Split a transaction into multiple categories (perfect for itemized receipts).
-
-```bash
-# Using JSON string
-npm run split -- <transaction_id> --splits-json '[
-  {"merchantName": "Walmart Groceries", "amount": -50.00, "categoryId": "123"},
-  {"merchantName": "Walmart Household", "amount": -25.50, "categoryId": "456"}
-]'
-
-# Using JSON file
-npm run split -- <transaction_id> --splits-file splits.json
-
-# Clear all splits (revert to single transaction)
-npm run split -- <transaction_id> --clear
-```
-
-**Example splits.json:**
 ```json
 [
   {
-    "merchantName": "Walmart Groceries",
-    "amount": -125.50,
-    "categoryId": "cat_groceries_id",
-    "notes": "Milk, eggs, bread"
-  },
-  {
-    "merchantName": "Walmart Household",
-    "amount": -45.25,
-    "categoryId": "cat_household_id",
-    "notes": "Paper towels, detergent"
+    "merchantName": "Walmart",
+    "amount": -20.78,
+    "categoryId": "223967675759308363",
+    "notes": "Groceries:\n- Milk - $4.37\n- Eggs - $5.46\nTotal: $9.83"
   }
 ]
 ```
 
-**Direct usage:**
-```bash
-tsx scripts/split_transaction.ts <transaction_id> --splits-json '[...]'
-tsx scripts/split_transaction.ts <transaction_id> --splits-file splits.json
-tsx scripts/split_transaction.ts <transaction_id> --clear
-```
+Use negative amounts for expenses. Split amounts must sum to the original transaction within one cent.
 
-### Add Notes
+## Implementation Notes
 
-Add or update notes on a transaction.
-
-```bash
-# Add notes
-npm run notes -- <transaction_id> "Receipt items: milk, eggs, bread"
-
-# Clear notes
-npm run notes -- <transaction_id> --clear
-```
-
-**Direct usage:**
-```bash
-tsx scripts/add_notes.ts <transaction_id> "Your note text here"
-tsx scripts/add_notes.ts <transaction_id> --clear
-```
-
-### Update Transaction
-
-Update various transaction fields.
-
-```bash
-# Update category
-npm run update -- <transaction_id> --category <category_id>
-
-# Update merchant name
-npm run update -- <transaction_id> --merchant "New Merchant Name"
-
-# Update amount
-npm run update -- <transaction_id> --amount -123.45
-
-# Update date
-npm run update -- <transaction_id> --date 2024-10-18
-
-# Update flags
-npm run update -- <transaction_id> --hide-from-reports true
-npm run update -- <transaction_id> --needs-review false
-
-# Multiple fields at once
-npm run update -- <transaction_id> --category <id> --merchant "Walmart" --notes "Receipt breakdown"
-```
-
-**Direct usage:**
-```bash
-tsx scripts/update_transaction.ts <transaction_id> --category <category_id>
-tsx scripts/update_transaction.ts <transaction_id> --merchant "New Name"
-```
-
-## Authentication
-
-All scripts support authentication via:
-
-1. **Environment variables** (recommended):
-   - `MONARCH_EMAIL`
-   - `MONARCH_PASSWORD`
-
-2. **Command-line arguments**:
-   ```bash
-   tsx scripts/find_transaction.ts --email "user@example.com" --password "pass" --id <id>
-   ```
-
-## Common Workflows
-
-### Receipt Categorization Workflow
-
-When you have an itemized receipt (e.g., from Walmart) and want to split it into categories:
-
-1. **Find the transaction:**
-   ```bash
-   npm run find -- --date 2024-10-18 --merchant "Walmart"
-   ```
-
-2. **Get available categories:**
-   ```bash
-   npm run categories
-   ```
-
-3. **Create splits JSON file:**
-   Create `walmart_splits.json`:
-   ```json
-   [
-     {"merchantName": "Walmart Groceries", "amount": -125.50, "categoryId": "cat_123"},
-     {"merchantName": "Walmart Household", "amount": -45.25, "categoryId": "cat_456"},
-     {"merchantName": "Walmart Health", "amount": -35.00, "categoryId": "cat_789"}
-   ]
-   ```
-
-4. **Split the transaction:**
-   ```bash
-   npm run split -- <transaction_id> --splits-file walmart_splits.json
-   ```
-
-5. **Add notes (optional):**
-   ```bash
-   npm run notes -- <transaction_id> "Receipt breakdown: groceries (milk, eggs), household (towels, soap), health (vitamins)"
-   ```
-
-## Error Handling
-
-All scripts:
-- Exit with code 0 on success
-- Exit with code 1 on errors
-- Print errors to stderr
-- Print results to stdout (JSON format)
-
-**Example error checking in bash:**
-```bash
-if npm run find -- --id "12345"; then
-  echo "Success!"
-else
-  echo "Failed to find transaction"
-fi
-```
-
-## TypeScript Development
-
-**Build scripts:**
-```bash
-npm run build
-```
-
-This compiles TypeScript to JavaScript in the `dist/` directory.
-
-**Run directly with tsx (no build needed):**
-```bash
-tsx scripts/find_transaction.ts --help
-```
-
-## Debugging
-
-Enable debug output:
-```bash
-DEBUG=monarchmoney:* npm run find -- --id <transaction_id>
-```
-
-## Notes
-
-- Split amounts must sum exactly to the original transaction amount (within 0.01 tolerance)
-- Transaction IDs can be found using the `find_transaction.ts` script
-- Category IDs can be found using the `get_categories.ts` script
-- Dates should be in `YYYY-MM-DD` format
-- Amounts should be negative for expenses, positive for income
-
-## Migration from Python Scripts
-
-If you were using the deprecated Python scripts:
-
-| Old Python Script | New TypeScript Script | npm Command |
-|------------------|----------------------|-------------|
-| `find_transaction.py` | `find_transaction.ts` | `npm run find` |
-| `get_categories.py` | `get_categories.ts` | `npm run categories` |
-| `split_transaction.py` | `split_transaction.ts` | `npm run split` |
-| `add_notes.py` | `add_notes.ts` | `npm run notes` |
-| `update_transaction.py` | `update_transaction.ts` | `npm run update` |
-
-All functionality is preserved with improved reliability using the TypeScript SDK.
+Several high-use scripts call Monarch's web GraphQL API through `scripts/utils/monarch_graphql.ts` because the public SDK can drift behind the web app schema. If a GraphQL command fails with a schema error, inspect `.cache/graphql-failures/`, compare against the current Monarch web request, and patch the query or mutation before retrying mutations.

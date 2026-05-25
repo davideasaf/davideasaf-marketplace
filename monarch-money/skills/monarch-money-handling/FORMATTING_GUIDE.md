@@ -218,9 +218,9 @@ Total: $12.95
 3. **Test formatting** with a sample transaction first
 4. **Include totals** for split transactions (helps verification)
 
-## Claude Code Integration
+## Agent Integration
 
-When Claude processes receipts, it should:
+When an agent processes receipts, it should:
 
 1. Parse receipt items with prices
 2. Group by category (if splitting)
@@ -230,7 +230,7 @@ When Claude processes receipts, it should:
 
 Example workflow:
 ```bash
-# 1. Claude analyzes receipt
+# 1. Agent analyzes receipt
 # 2. Groups items by category
 # 3. Generates formatted notes:
 

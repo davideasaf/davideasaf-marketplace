@@ -1,6 +1,6 @@
 /**
  * OPTIMIZED MUTATIONS
- * Performance improvements applied per PERFORMANCE_OPTIMIZATION.md:
+ * Performance improvements from the archived performance investigation:
  * 1. Parallel API calls (50% faster)
  * 2. Minimal GraphQL fields (20-30% faster)
  * 3. Minified queries (10-15% faster)

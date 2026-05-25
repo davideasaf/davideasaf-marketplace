@@ -1,7 +1,7 @@
 ---
 name: monarch-money
 description: 'Use this single consolidated skill for Monarch Money transaction management: find transactions, list categories, split receipts, categorize or update transactions, add itemized notes, review needs-review transactions, and process Amazon refunds. Trigger this for any Monarch Money, budgeting transaction, receipt splitting, refund review, or transaction categorization request.'
-version: '1.0.2'
+version: '1.0.3'
 ---
 
 # Monarch Money
@@ -52,9 +52,9 @@ Never print secret values. If auth fails, report which variable names are missin
 | Split receipt and add notes | `npm run split-receipt -- <transaction_id> --splits-file /tmp/splits.json` |
 | Add or replace notes | `npm run notes -- <transaction_id> $'Category:\n- Item - $12.34'` |
 | Update transaction fields | `npm run update -- <transaction_id> --category <category_id>` |
+| Manage tags | `npm run tags -- --list` |
 | Bulk update transactions | `npm run bulk-update -- --updates-file /tmp/updates.json` |
-| Process Amazon refunds | `npm run process-refunds -- --days 14` |
-| Preview Amazon refund changes | `npm run process-refunds -- --days 14 --dry-run` |
+| Coordinate Amazon refund review | `npm run batch-refunds -- --days 14` |
 | Scrape Amazon refunds | `npm run amazon-scrape -- --headless` |
 | Scrape Amazon refunds with items | `npm run amazon-scrape-items -- --headless` |
 
@@ -141,5 +141,6 @@ Use these only when the task requires detail:
 - `SCRIPTS_REFERENCE.md`
 - `FORMATTING_GUIDE.md`
 - `TROUBLESHOOTING.md`
-- `PERFORMANCE_OPTIMIZATION.md`
-- `ROOT_CAUSE_ANALYSIS.md`
+- `scripts/README.md`
+
+Historical investigation notes live in `docs/archive/`.
