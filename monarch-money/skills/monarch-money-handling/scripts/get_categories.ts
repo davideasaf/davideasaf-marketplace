@@ -13,20 +13,17 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import * as process from 'node:process';
 import { parseArgs } from 'node:util';
-import { MonarchClient } from 'monarchmoney';
+import { monarchGraphQL, printGraphQLError } from './utils/monarch_graphql';
 
 interface GetCategoriesArgs {
   format?: string;
   refresh?: boolean;
-  email?: string;
-  password?: string;
 }
 
 const CACHE_DIR = path.join(__dirname, '..', '.cache');
 const CACHE_FILE = path.join(CACHE_DIR, 'categories.json');
 
-async function getCategories(mm: MonarchClient) {
-  // Use the actual browser query that works
+async function getCategories() {
   const browserQuery = `
     query ManageGetCategoryGroups {
       categoryGroups {
@@ -55,7 +52,10 @@ async function getCategories(mm: MonarchClient) {
     }
   `;
 
-  const result = await mm['graphql'].query(browserQuery);
+  const result = await monarchGraphQL<{
+    categories: any[];
+    categoryGroups: any[];
+  }>('ManageGetCategoryGroups', browserQuery);
 
   return {
     categories: result.categories,
@@ -144,8 +144,6 @@ async function main() {
     options: {
       format: { type: 'string', default: 'list' },
       refresh: { type: 'boolean', default: false },
-      email: { type: 'string' },
-      password: { type: 'string' },
     },
   });
 
@@ -169,32 +167,13 @@ async function main() {
 
   // Fetch from API if no cache or refresh requested
   if (!data) {
-    // Initialize Monarch Money
-    const mm = new MonarchClient({ baseURL: 'https://api.monarch.com' });
-
-    // Login
-    const email = args.email || process.env.MONARCH_EMAIL;
-    const password = args.password || process.env.MONARCH_PASSWORD;
-
-    if (!email || !password) {
-      console.error('Error: Email and password required (via args or env vars)');
-      process.exit(1);
-    }
-
-    try {
-      await mm.login({ email, password, useSavedSession: true, saveSession: true });
-    } catch (error) {
-      console.error('Error logging in:', error);
-      process.exit(1);
-    }
-
     // Get categories from API
     try {
-      data = await getCategories(mm);
+      data = await getCategories();
       await saveCache(data);
       console.error('[API] Fetched categories from Monarch Money');
     } catch (error) {
-      console.error('Error getting categories:', error);
+      printGraphQLError(error);
       process.exit(1);
     }
   }

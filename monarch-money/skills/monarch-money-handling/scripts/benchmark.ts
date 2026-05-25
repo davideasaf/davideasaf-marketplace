@@ -92,8 +92,6 @@ interface BenchmarkArgs {
   date?: string;
   'start-date'?: string;
   'end-date'?: string;
-  email?: string;
-  password?: string;
 }
 
 async function findLatestTransaction(
@@ -106,33 +104,31 @@ async function findLatestTransaction(
 ) {
   const endTimer = telemetry.start('Find Transaction');
 
-  let filters: any = {
+  const options: Parameters<MonarchClient['transactions']['getTransactions']>[0] = {
+    limit: 10,
     search: merchant,
   };
 
   if (date) {
-    filters.startDate = date;
-    filters.endDate = date;
+    options.startDate = date;
+    options.endDate = date;
   } else if (startDate && endDate) {
-    filters.startDate = startDate;
-    filters.endDate = endDate;
+    options.startDate = startDate;
+    options.endDate = endDate;
   } else {
     // Default to last 30 days
     const end = new Date();
     const start = new Date();
     start.setDate(start.getDate() - 30);
-    filters.startDate = start.toISOString().split('T')[0];
-    filters.endDate = end.toISOString().split('T')[0];
+    options.startDate = start.toISOString().split('T')[0];
+    options.endDate = end.toISOString().split('T')[0];
   }
 
-  const transactions = await mm.transactions.getTransactions({
-    limit: 10,
-    filters,
-  });
+  const transactions = await mm.transactions.getTransactions(options);
 
   endTimer();
 
-  return transactions;
+  return transactions.transactions;
 }
 
 async function getCategories(mm: MonarchClient, telemetry: Telemetry) {
@@ -156,8 +152,6 @@ async function main() {
       date: { type: 'string' },
       'start-date': { type: 'string' },
       'end-date': { type: 'string' },
-      email: { type: 'string' },
-      password: { type: 'string' },
     },
   });
 
@@ -173,8 +167,8 @@ async function main() {
 
   // Login
   const loginTimer = telemetry.start('Login (with saved session)');
-  const email = args.email || process.env.MONARCH_EMAIL;
-  const password = args.password || process.env.MONARCH_PASSWORD;
+  const email = process.env.MONARCH_EMAIL;
+  const password = process.env.MONARCH_PASSWORD;
 
   if (!email || !password) {
     console.error('❌ Error: Email and password required (via args or env vars)');
@@ -210,9 +204,9 @@ async function main() {
       console.log('------------------------');
       console.log(`ID:       ${transactions[0].id}`);
       console.log(`Date:     ${transactions[0].date}`);
-      console.log(`Merchant: ${transactions[0].merchant?.name || 'N/A'}`);
+      console.log(`Merchant: ${(transactions[0] as any).merchant?.name || 'N/A'}`);
       console.log(`Amount:   $${Math.abs(transactions[0].amount).toFixed(2)}`);
-      console.log(`Category: ${transactions[0].category?.name || 'Uncategorized'}`);
+      console.log(`Category: ${(transactions[0] as any).category?.name || 'Uncategorized'}`);
       console.log();
     }
 

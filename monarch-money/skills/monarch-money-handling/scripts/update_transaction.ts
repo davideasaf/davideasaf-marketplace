@@ -13,7 +13,7 @@
 
 import * as process from 'node:process';
 import { parseArgs } from 'node:util';
-import { MonarchClient } from 'monarchmoney';
+import { monarchGraphQL, printGraphQLError } from './utils/monarch_graphql';
 
 interface UpdateTransactionArgs {
   category?: string;
@@ -23,24 +23,85 @@ interface UpdateTransactionArgs {
   'hide-from-reports'?: string;
   'needs-review'?: string;
   notes?: string;
-  email?: string;
-  password?: string;
 }
 
 async function updateTransaction(
-  mm: MonarchClient,
   transactionId: string,
   updates: {
-    categoryId?: string;
-    merchant?: string;
+    category?: string;
+    name?: string;
     amount?: number;
     date?: string;
     hideFromReports?: boolean;
+    needsReview?: boolean;
     notes?: string;
   }
 ) {
-  const result = await mm.transactions.updateTransaction(transactionId, updates);
-  return result;
+  const mutation = `
+    mutation Web_TransactionDrawerUpdateTransaction($input: UpdateTransactionMutationInput!) {
+      updateTransaction(input: $input) {
+        transaction {
+          id
+          amount
+          pending
+          date
+          hideFromReports
+          needsReview
+          reviewedAt
+          plaidName
+          notes
+          isRecurring
+          category {
+            id
+            __typename
+          }
+          goal {
+            id
+            __typename
+          }
+          merchant {
+            id
+            name
+            __typename
+          }
+          __typename
+        }
+        errors {
+          fieldErrors {
+            field
+            messages
+            __typename
+          }
+          message
+          code
+          __typename
+        }
+        __typename
+      }
+    }
+  `;
+
+  const result = await monarchGraphQL<{
+    updateTransaction: {
+      transaction: unknown;
+      errors?: {
+        fieldErrors?: Array<{ field: string; messages: string[] }>;
+        message?: string;
+        code?: string;
+      };
+    };
+  }>('Web_TransactionDrawerUpdateTransaction', mutation, {
+    input: {
+      id: transactionId,
+      ...updates,
+    },
+  });
+
+  if (result.updateTransaction.errors?.message || result.updateTransaction.errors?.fieldErrors?.length) {
+    throw new Error(`Failed to update transaction: ${JSON.stringify(result.updateTransaction.errors)}`);
+  }
+
+  return result.updateTransaction.transaction;
 }
 
 function parseBoolean(value: string | undefined): boolean | undefined {
@@ -58,8 +119,6 @@ async function main() {
       'hide-from-reports': { type: 'string' },
       'needs-review': { type: 'string' },
       notes: { type: 'string' },
-      email: { type: 'string' },
-      password: { type: 'string' },
     },
     allowPositionals: true,
   });
@@ -77,12 +136,15 @@ async function main() {
   // Build updates object
   const updates: any = {};
 
-  if (args.category) updates.categoryId = args.category;
-  if (args.merchant) updates.merchant = args.merchant;
+  if (args.category) updates.category = args.category;
+  if (args.merchant) updates.name = args.merchant;
   if (args.amount) updates.amount = parseFloat(args.amount);
   if (args.date) updates.date = args.date;
   if (args['hide-from-reports'] !== undefined) {
     updates.hideFromReports = parseBoolean(args['hide-from-reports']);
+  }
+  if (args['needs-review'] !== undefined) {
+    updates.needsReview = parseBoolean(args['needs-review']);
   }
   if (args.notes) updates.notes = args.notes;
 
@@ -92,32 +154,13 @@ async function main() {
     process.exit(1);
   }
 
-  // Initialize Monarch Money
-  const mm = new MonarchClient({ baseURL: 'https://api.monarch.com' });
-
-  // Login
-  const email = args.email || process.env.MONARCH_EMAIL;
-  const password = args.password || process.env.MONARCH_PASSWORD;
-
-  if (!email || !password) {
-    console.error('Error: Email and password required (via args or env vars)');
-    process.exit(1);
-  }
-
-  try {
-    await mm.login({ email, password, useSavedSession: true, saveSession: true });
-  } catch (error) {
-    console.error('Error logging in:', error);
-    process.exit(1);
-  }
-
   // Update transaction
   try {
-    const result = await updateTransaction(mm, transactionId, updates);
+    const result = await updateTransaction(transactionId, updates);
 
     console.log(JSON.stringify(result, null, 2));
   } catch (error) {
-    console.error('Error updating transaction:', error);
+    printGraphQLError(error);
     process.exit(1);
   }
 }

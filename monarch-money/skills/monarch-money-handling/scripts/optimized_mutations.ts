@@ -150,7 +150,7 @@ export async function splitAndAnnotateOptimized(
           expectedAffectedTransactionCount: 1,
           updates: { notes: split.notes },
           filters: { transactionVisibility: 'non_hidden_transactions_only' },
-        }).then(result => {
+        }).then((result: any) => {
           if (!result.bulkUpdateTransactions.success) {
             console.warn(`Warning: Failed to add notes to split ${i + 1}`);
           }

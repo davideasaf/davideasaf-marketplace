@@ -60,8 +60,8 @@ async function findMonarchRefunds(
     limit: 500,
   });
 
-  const allAmazon = transactions.allTransactions.results.filter(
-    t => t.merchant?.name === 'Amazon'
+  const allAmazon = transactions.transactions.filter(
+    (t: any) => t.merchant?.name === 'Amazon'
   );
 
   const refunds = filterRefunds(allAmazon);

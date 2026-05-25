@@ -9,16 +9,13 @@
 
 import * as process from 'node:process';
 import { parseArgs } from 'node:util';
-import { MonarchClient } from 'monarchmoney';
+import { monarchGraphQL, printGraphQLError } from './utils/monarch_graphql';
 
 interface AddNotesArgs {
   clear?: boolean;
-  email?: string;
-  password?: string;
 }
 
 async function addNotes(
-  mm: MonarchClient,
   transactionId: string,
   notes: string
 ) {
@@ -60,9 +57,16 @@ async function addNotes(
     filters: { transactionVisibility: 'non_hidden_transactions_only' },
   };
 
-  const result = await mm['graphql'].mutation(mutation, variables);
+  const result = await monarchGraphQL<{
+    bulkUpdateTransactions: {
+      success: boolean;
+      affectedCount: number;
+      errors?: Array<{ message: string }>;
+      __typename?: string;
+    };
+  }>('Common_BulkUpdateTransactionsMutation', mutation, variables);
 
-  if (!result.bulkUpdateTransactions.success || result.bulkUpdateTransactions.errors?.length > 0) {
+  if (!result.bulkUpdateTransactions.success || (result.bulkUpdateTransactions.errors?.length ?? 0) > 0) {
     throw new Error(`Failed to update notes: ${JSON.stringify(result.bulkUpdateTransactions.errors)}`);
   }
 
@@ -73,8 +77,6 @@ async function main() {
   const { values, positionals } = parseArgs({
     options: {
       clear: { type: 'boolean', default: false },
-      email: { type: 'string' },
-      password: { type: 'string' },
     },
     allowPositionals: true,
   });
@@ -100,32 +102,13 @@ async function main() {
     noteText = positionals[1];
   }
 
-  // Initialize Monarch Money
-  const mm = new MonarchClient({ baseURL: 'https://api.monarch.com' });
-
-  // Login
-  const email = args.email || process.env.MONARCH_EMAIL;
-  const password = args.password || process.env.MONARCH_PASSWORD;
-
-  if (!email || !password) {
-    console.error('Error: Email and password required (via args or env vars)');
-    process.exit(1);
-  }
-
-  try {
-    await mm.login({ email, password, useSavedSession: true, saveSession: true });
-  } catch (error) {
-    console.error('Error logging in:', error);
-    process.exit(1);
-  }
-
   // Add notes
   try {
-    const result = await addNotes(mm, transactionId, noteText);
+    const result = await addNotes(transactionId, noteText);
 
     console.log(JSON.stringify(result, null, 2));
   } catch (error) {
-    console.error('Error adding notes:', error);
+    printGraphQLError(error);
     process.exit(1);
   }
 }

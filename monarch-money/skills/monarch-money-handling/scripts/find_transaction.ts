@@ -10,7 +10,7 @@
 
 import * as process from 'node:process';
 import { parseArgs } from 'node:util';
-import { MonarchClient } from 'monarchmoney';
+import { monarchGraphQL, printGraphQLError } from './utils/monarch_graphql';
 
 interface FindTransactionArgs {
   id?: string;
@@ -19,17 +19,124 @@ interface FindTransactionArgs {
   'end-date'?: string;
   merchant?: string;
   limit?: string;
-  email?: string;
-  password?: string;
 }
 
-async function findTransactionById(mm: MonarchClient, transactionId: string) {
-  const result = await mm.transactions.getTransactionDetails(transactionId);
-  return result;
+async function findTransactionById(transactionId: string) {
+  const query = `
+    query GetTransactionDrawer($id: UUID!, $redirectPosted: Boolean) {
+      getTransaction(id: $id, redirectPosted: $redirectPosted) {
+        id
+        amount
+        pending
+        isRecurring
+        date
+        originalDate
+        hideFromReports
+        needsReview
+        reviewedAt
+        plaidName
+        notes
+        hasSplitTransactions
+        isSplitTransaction
+        isManual
+        splitTransactions {
+          id
+          amount
+          merchant {
+            id
+            name
+            __typename
+          }
+          category {
+            id
+            name
+            __typename
+          }
+          __typename
+        }
+        originalTransaction {
+          id
+          date
+          amount
+          merchant {
+            id
+            name
+            __typename
+          }
+          __typename
+        }
+        attachments {
+          id
+          publicId
+          extension
+          sizeBytes
+          filename
+          originalAssetUrl
+          __typename
+        }
+        account {
+          id
+          displayName
+          logoUrl
+          mask
+          subtype {
+            display
+            __typename
+          }
+          __typename
+        }
+        category {
+          id
+          __typename
+        }
+        goal {
+          id
+          __typename
+        }
+        merchant {
+          id
+          name
+          transactionCount
+          logoUrl
+          recurringTransactionStream {
+            id
+            __typename
+          }
+          __typename
+        }
+        tags {
+          id
+          name
+          color
+          order
+          __typename
+        }
+        needsReviewByUser {
+          id
+          __typename
+        }
+        __typename
+      }
+      myHousehold {
+        users {
+          id
+          name
+          __typename
+        }
+        __typename
+      }
+    }
+  `;
+
+  const result = await monarchGraphQL<{ getTransaction: unknown }>('GetTransactionDrawer', query, {
+    id: transactionId,
+    redirectPosted: true,
+  });
+
+  return result.getTransaction;
 }
 
 async function findTransactionsByCriteria(
-  mm: MonarchClient,
   options: {
     startDate?: string;
     endDate?: string;
@@ -37,14 +144,103 @@ async function findTransactionsByCriteria(
     limit?: number;
   }
 ) {
-  const result = await mm.transactions.getTransactions({
-    startDate: options.startDate,
-    endDate: options.endDate,
-    search: options.merchant || '',
+  const query = `
+    query Web_GetTransactionsList($offset: Int, $limit: Int, $filters: TransactionFilterInput, $orderBy: TransactionOrdering) {
+      allTransactions(filters: $filters) {
+        totalCount
+        totalSelectableCount
+        results(offset: $offset, limit: $limit, orderBy: $orderBy) {
+          id
+          amount
+          pending
+          date
+          hideFromReports
+          hiddenByAccount
+          plaidName
+          notes
+          isRecurring
+          reviewStatus
+          needsReview
+          isSplitTransaction
+          dataProviderDescription
+          attachments {
+            id
+            __typename
+          }
+          goal {
+            id
+            name
+            __typename
+          }
+          category {
+            id
+            name
+            icon
+            group {
+              id
+              type
+              __typename
+            }
+            __typename
+          }
+          merchant {
+            name
+            id
+            transactionsCount
+            logoUrl
+            recurringTransactionStream {
+              frequency
+              isActive
+              __typename
+            }
+            __typename
+          }
+          tags {
+            id
+            name
+            color
+            order
+            __typename
+          }
+          account {
+            id
+            displayName
+            icon
+            logoUrl
+            __typename
+          }
+          __typename
+        }
+        __typename
+      }
+      transactionRules {
+        id
+        __typename
+      }
+    }
+  `;
+
+  const filters: Record<string, unknown> = {
+    transactionVisibility: 'non_hidden_transactions_only',
+  };
+  if (options.startDate) filters.startDate = options.startDate;
+  if (options.endDate) filters.endDate = options.endDate;
+  if (options.merchant) filters.search = options.merchant;
+
+  const result = await monarchGraphQL<{
+    allTransactions: {
+      totalCount: number;
+      totalSelectableCount: number;
+      results: unknown[];
+    };
+  }>('Web_GetTransactionsList', query, {
+    offset: 0,
     limit: options.limit || 100,
+    filters,
+    orderBy: 'date',
   });
 
-  return result.transactions;
+  return result.allTransactions;
 }
 
 async function main() {
@@ -56,40 +252,16 @@ async function main() {
       'end-date': { type: 'string' },
       merchant: { type: 'string' },
       limit: { type: 'string', default: '100' },
-      email: { type: 'string' },
-      password: { type: 'string' },
     },
   });
 
   const args = values as FindTransactionArgs;
 
-  // Initialize Monarch Money with correct API endpoint
-  const mm = new MonarchClient({
-    baseURL: 'https://api.monarch.com',
-  });
-
-  // Login
-  const email = args.email || process.env.MONARCH_EMAIL;
-  const password = args.password || process.env.MONARCH_PASSWORD;
-  const mfaSecretKey = process.env.MONARCH_MFA_SECRET;
-
-  if (!email || !password) {
-    console.error('Error: Email and password required (via args or env vars)');
-    process.exit(1);
-  }
-
-  try {
-    await mm.login({ email, password, mfaSecretKey, useSavedSession: true, saveSession: true });
-  } catch (error) {
-    console.error('Error logging in:', error);
-    process.exit(1);
-  }
-
   // Find transaction
   try {
     if (args.id) {
       // Find by ID
-      const transaction = await findTransactionById(mm, args.id);
+      const transaction = await findTransactionById(args.id);
       console.log(JSON.stringify(transaction, null, 2));
     } else {
       // Find by criteria
@@ -101,7 +273,7 @@ async function main() {
         process.exit(1);
       }
 
-      const transactions = await findTransactionsByCriteria(mm, {
+      const transactionResult = await findTransactionsByCriteria({
         startDate,
         endDate,
         merchant: args.merchant,
@@ -111,8 +283,10 @@ async function main() {
       console.log(
         JSON.stringify(
           {
-            count: transactions.length,
-            transactions,
+            count: transactionResult.results.length,
+            totalCount: transactionResult.totalCount,
+            totalSelectableCount: transactionResult.totalSelectableCount,
+            transactions: transactionResult.results,
           },
           null,
           2
@@ -120,7 +294,7 @@ async function main() {
       );
     }
   } catch (error) {
-    console.error('Error finding transaction:', error);
+    printGraphQLError(error);
     process.exit(1);
   }
 }
