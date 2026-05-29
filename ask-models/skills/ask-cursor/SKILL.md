@@ -140,9 +140,11 @@ then apply the four-step ordering above. **Ignore `-max` variants entirely.**
 If a new non-max tier appears above `xhigh` (e.g. `ultra`), upgrade the
 mapping for this conversation.
 
-**Default when no model is specified at all**: `claude-opus-4-7-thinking-xhigh`
-(latest Opus, top non-max tier, Thinking on — highest non-max reasoning
-Cursor offers).
+**Default when no model is specified at all**: `composer-2.5` (Cursor's own
+Composer 2.5 — the standard ask-cursor pick when the user hasn't named a
+family). Family-named requests ("ask opus", "ask grok", etc.) still resolve
+via the mapping table above; the composer-2.5 default only applies when no
+model is implied at all.
 
 ## Running the CLI
 
