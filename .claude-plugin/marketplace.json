@@ -1,6 +1,6 @@
 {
   "name": "davideasaf-marketplace",
-  "version": "1.0.3",
+  "version": "1.1.0",
   "owner": {
     "name": "David Asaf"
   },
@@ -24,6 +24,31 @@
       "name": "linear-dev-flow",
       "source": "./linear-dev-flow",
       "description": "Manages Linear issue-based development workflows with workflow state integration, worktree isolation, and structured planning phases. Agent creates plans in Todo, implements from Dev Ready, and delivers to In Review for human validation."
+    },
+    {
+      "name": "ask-models",
+      "source": "./ask-models",
+      "description": "Second opinions from other AI models via orchestration-friendly CLI wrappers: Claude Opus, OpenAI Codex/GPT, Cursor-hosted models, and Antigravity/Gemini."
+    },
+    {
+      "name": "media-tools",
+      "source": "./media-tools",
+      "description": "Transcribe/diarize audio & video, clean WebVTT transcripts, and generate or edit images via Gemini (nanobanana) and OpenAI Codex."
+    },
+    {
+      "name": "browser-tools",
+      "source": "./browser-tools",
+      "description": "Stealth Chrome automation for CAPTCHA / bot-detected sites when standard headless automation gets blocked."
+    },
+    {
+      "name": "dev-utils",
+      "source": "./dev-utils",
+      "description": "Developer utilities: git worktrees (with .worktreeinclude copy support) and styled Mermaid diagram building."
+    },
+    {
+      "name": "research-tools",
+      "source": "./research-tools",
+      "description": "Research & knowledge tools: NotebookLM API and structured YouTube search with insights."
     }
   ]
 }

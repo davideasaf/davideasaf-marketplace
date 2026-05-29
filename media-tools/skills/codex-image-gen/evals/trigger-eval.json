@@ -1,0 +1,22 @@
+[
+  {"query": "/codex-image-gen — make a wide hero banner for the slabstack landing page, dark navy gradient with amber accents, aspect ratio 16:9, target 2K", "should_trigger": true},
+  {"query": "ok new task: generate an image of a card show booth that I can drop into the about page hero. Vendor at a folding table, slabs visible. Should feel premium not cheesy.", "should_trigger": true},
+  {"query": "i need to make a flyer to hand out at the Charlotte show next weekend. Use the slabstack brand. Print-ready, 8.5x11, includes the SIGN UP NOW cta", "should_trigger": true},
+  {"query": "edit this screenshot — make the background transparent so i can drop it over the dark hero section. file is at ~/Downloads/empty-vault-mockup.png", "should_trigger": true},
+  {"query": "compose: take the slabstack logo at apps/landing/public/logo.svg and put it onto the device screen in the photo I just pasted, match the perspective", "should_trigger": true},
+  {"query": "generate three icon variations for the 'inventory at your fingertips' feature row — line icon style, white on transparent, 256x256", "should_trigger": true},
+  {"query": "i want a 1:3 vertical bookmark-style asset to print and stack next to my booth. slabstack brand, 'Vending, Simplified' tagline, target ~2K on the long edge", "should_trigger": true},
+  {"query": "have codex make a placeholder hero image for the empty inventory state — first-run feel, friendly but not childish", "should_trigger": true},
+  {"query": "ask codex to remix the flyer we made earlier — same composition but with a 'pokemon TCG show' setting in the backdrop instead of generic", "should_trigger": true},
+  {"query": "create a 1080x1920 vertical asset I can post to instagram stories — slabstack brand, big QR code in the middle linking to the signup page", "should_trigger": true},
+  {"query": "find me a stock image of a vendor at a card show I can use as a placeholder hero — preferably free for commercial use", "should_trigger": false},
+  {"query": "extract the text from this screenshot of an inventory list, customer sent it via email and I need it as a CSV", "should_trigger": false},
+  {"query": "describe what's in /tmp/screenshot.png — i want to know what error the user is hitting before i open the file", "should_trigger": false},
+  {"query": "compress all the demo R2 images down to webp under 200kb each, they're like 800kb right now and slowing down the demo tenant", "should_trigger": false},
+  {"query": "the og:image at apps/landing/public/og-image.png is 1.4mb. resize it to under 200kb but keep the 1200x630 dimensions", "should_trigger": false},
+  {"query": "in apps/admin/src/components/Hero.tsx the background-image url is broken, it should point to /assets/hero.png — fix it", "should_trigger": false},
+  {"query": "review the screenshot at ~/Downloads/sales-report-2026-04-22.png and tell me if the totals match what's in the database", "should_trigger": false},
+  {"query": "convert this png to favicon.ico for apps/landing/public — needs the standard 16/32/48 sizes baked into one .ico", "should_trigger": false},
+  {"query": "crop the top 200px off ~/Downloads/whiteboard.jpg so the room lighting at the top is gone", "should_trigger": false},
+  {"query": "the sw.js asset on production has the wrong cache headers — check apps/admin/public/_headers and fix the no-cache directive", "should_trigger": false}
+]

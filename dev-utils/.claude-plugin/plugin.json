@@ -1,0 +1,9 @@
+{
+  "name": "dev-utils",
+  "description": "Everyday developer utilities: create isolated git worktrees (with .worktreeinclude support for copying gitignored secrets) and build/validate styled, color-consistent Mermaid diagrams for docs.",
+  "version": "1.0.0",
+  "author": {
+    "name": "David Asaf"
+  },
+  "keywords": ["git-worktree", "mermaid", "diagrams", "developer-tools"]
+}

@@ -1,0 +1,40 @@
+{
+  "description": "Product photography prompts for e-commerce and marketing",
+  "prompts": [
+    {
+      "subject": {"main": "wireless headphones", "material": "matte black finish"},
+      "context": {"setting": "clean white surface", "props": "subtle shadow"},
+      "style": {"aesthetic": "minimalist product photography", "lighting": "soft studio lighting"},
+      "technical": {"lens": "85mm f/2.8", "resolution": "4K"}
+    },
+    {
+      "subject": {"main": "ceramic coffee mug", "material": "handcrafted pottery, earth tones"},
+      "context": {"setting": "rustic wooden table", "props": "coffee beans scattered"},
+      "style": {"aesthetic": "artisanal lifestyle", "lighting": "warm morning light"},
+      "technical": {"lens": "50mm f/1.8", "focus": "shallow depth of field"}
+    },
+    {
+      "subject": {"main": "luxury watch", "material": "brushed steel case, leather strap"},
+      "context": {"setting": "dark marble surface", "props": "dramatic reflection"},
+      "style": {"aesthetic": "high-end product photography", "lighting": "dramatic side lighting"},
+      "technical": {"lens": "macro 100mm", "resolution": "4K HDR"}
+    },
+    {
+      "subject": {"main": "skincare bottle", "material": "frosted glass, minimalist label"},
+      "context": {"setting": "spa-like setting", "props": "water droplets, green leaves"},
+      "style": {"aesthetic": "clean beauty photography", "lighting": "soft diffused light"},
+      "technical": {"lens": "85mm", "focus": "product sharp, background soft"}
+    },
+    {
+      "subject": {"main": "sneakers", "material": "white leather, colorful accents"},
+      "context": {"setting": "floating on gradient background"},
+      "style": {"aesthetic": "dynamic product shot", "lighting": "even studio lighting"},
+      "technical": {"lens": "35mm", "resolution": "4K"}
+    },
+    "Professional product photo of a smartphone on a marble surface, dramatic lighting from the left, reflection visible, 4K, commercial photography",
+    "Flat lay of cosmetics arranged artistically on blush pink background, soft shadows, editorial style, overhead shot",
+    "Close-up of premium fountain pen on leather notebook, golden hour light through window, shallow depth of field, 85mm lens",
+    "Tech gadget floating against pure white background, soft shadow below, clean e-commerce style, high resolution",
+    "Artisan chocolate bar with visible texture, dark moody background, single spotlight, food photography style"
+  ]
+}

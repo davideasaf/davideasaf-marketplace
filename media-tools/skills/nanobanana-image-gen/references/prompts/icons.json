@@ -1,0 +1,15 @@
+{
+  "description": "App icons, logos, and UI element prompts",
+  "prompts": [
+    "Modern app icon, simple geometric shape, vibrant gradient background, rounded corners, iOS style, 1024x1024",
+    "Minimalist logo mark, single letter stylized, clean vector design, works on light and dark backgrounds",
+    "3D app icon with subtle depth, glossy surface, soft shadow, macOS Big Sur style, premium feel",
+    "Flat design icon set style, single object, bold colors, no gradients, material design aesthetic",
+    "Startup logo concept, abstract symbol representing growth and innovation, professional and modern",
+    "Social media avatar placeholder, geometric pattern, unique and recognizable at small sizes",
+    "E-commerce category icon, simple representation of product type, works at 64px, consistent stroke weight",
+    "Tech company logo, interconnected shapes suggesting network or connectivity, modern and trustworthy",
+    "Health app icon, calming colors, organic shapes, wellness and self-care feeling, friendly appearance",
+    "Finance app icon, abstract chart or growth symbol, professional blues and greens, trustworthy vibe"
+  ]
+}

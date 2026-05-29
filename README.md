@@ -12,10 +12,17 @@ This marketplace is your one-stop shop for Claude Code extensions that make life
 
 ### 🔌 Available Plugins
 
-| Plugin                                  | Description                           | What It Does                                                                    | Status   |
-| --------------------------------------- | ------------------------------------- | ------------------------------------------------------------------------------- | -------- |
-| 💰 **[Monarch Money](#-monarch-money)** | Budget management & receipt splitting | Split receipts by category, categorize transactions, manage finances through AI | ✅ Ready |
-| 🖼️ **[Image Search](#️-image-search)**  | Unsplash image discovery              | Describe any image and instantly find it from the internet                      | ✅ Ready |
+| Plugin                                      | Description                            | What It Does                                                                    | Status   |
+| ------------------------------------------- | -------------------------------------- | ------------------------------------------------------------------------------- | -------- |
+| 💰 **[Monarch Money](#-monarch-money)**     | Budget management & receipt splitting  | Split receipts by category, categorize transactions, manage finances through AI | ✅ Ready |
+| 🖼️ **[Image Search](#️-image-search)**      | Unsplash image discovery               | Describe any image and instantly find it from the internet                      | ✅ Ready |
+| 🐙 **[github-dev-flow](./github-dev-flow/)** | GitHub issue lifecycle & dev workflow | Create issues with evidence, manage project boards, worktree-isolated planning  | ✅ Ready |
+| 📐 **[linear-dev-flow](./linear-dev-flow/)** | Linear issue lifecycle & dev workflow  | Plan in Todo, implement from Dev Ready, deliver to In Review                     | ✅ Ready |
+| 🤝 **[ask-models](#-ask-models)**           | Second opinions from other AI models   | Orchestrate Claude, Codex/GPT, Cursor models & Antigravity/Gemini with live JSONL streams | ✅ Ready |
+| 🎬 **[media-tools](#-media-tools)**         | Audio, video & image tooling           | Transcribe/diarize recordings, clean VTT, generate/edit images (Gemini & OpenAI) | ✅ Ready |
+| 🌐 **[browser-tools](#-browser-tools)**     | Stealth browser automation             | Real Chrome + your profile to get past CAPTCHAs / bot detection                 | ✅ Ready |
+| 🧰 **[dev-utils](#-dev-utils)**             | Everyday developer utilities           | Git worktrees & styled Mermaid diagrams                                         | ✅ Ready |
+| 🔬 **[research-tools](#-research-tools)**   | Research & knowledge tools             | NotebookLM API & YouTube search with insights                                   | ✅ Ready |
 
 ---
 
@@ -91,6 +98,84 @@ This marketplace is your one-stop shop for Claude Code extensions that make life
 
 ---
 
+## 🤝 ask-models
+
+**Phone a friend — get a second opinion from a different model.**
+
+Each skill wraps another AI CLI for orchestration: kick a partner off in the background, watch its JSONL event stream to tell "still thinking" from "hung," then collect the clean final answer.
+
+- 🧠 **ask-claude** — Claude Opus (`claude --print --output-format stream-json`)
+- 🤖 **ask-codex** — OpenAI Codex / GPT (`codex exec --json`, high reasoning effort)
+- 🎯 **ask-cursor** — any Cursor-hosted model (Opus, GPT, Gemini, Grok, Composer…)
+- 🛰️ **ask-antigravity** — Google's Antigravity CLI (Gemini 3.x, and more)
+
+```
+"Ask codex why this migration might fail"
+"Get a second opinion from Opus on the auth refactor"
+"Have cursor's gpt-5.4 and gemini both review this in parallel"
+```
+
+> Requires the respective partner CLIs installed (`claude`, `codex`, `cursor-agent`, `agy`).
+
+---
+
+## 🎬 media-tools
+
+**Recordings in, clean text and images out.**
+
+- 🎙️ **transcribe** — voice notes, meetings, video → text. Groq Whisper (fast/free), xAI for large files, Deepgram Nova-3 for multi-speaker diarization
+- 🧹 **vtt-processor** — clean WebVTT (Teams/Zoom) into token-efficient, speaker-attributed text (~62% smaller)
+- 🍌 **nanobanana-image-gen** — generate/edit images via Gemini (gcloud OAuth or `GEMINI_API_KEY`)
+- 🖼️ **codex-image-gen** — generate/edit/compose images via OpenAI Codex (gpt-image)
+
+```
+"Transcribe this meeting and tell me who said what"
+"Clean up this Teams .vtt transcript"
+"Generate a logo of a ceramic coffee cup, photorealistic"
+```
+
+---
+
+## 🌐 browser-tools
+
+**Get past the bouncer.**
+
+- 🥷 **stealth-browser** — launches real Google Chrome with your profile for bot-detected / CAPTCHA / login-required sites (Google, Cloudflare-protected pages) when standard headless automation gets blocked
+
+```
+"This site keeps blocking the headless browser — use stealth-browser to log in and screenshot my dashboard"
+```
+
+---
+
+## 🧰 dev-utils
+
+**The small tools you reach for constantly.**
+
+- 🌳 **git-worktree** — isolated worktrees with `.worktreeinclude` copy support for gitignored secrets
+- 📊 **mermaid-diagram-builder** — styled, validated Mermaid diagrams for markdown
+
+```
+"Make a worktree for this feature branch"
+"Build a sequence diagram of the auth handshake"
+```
+
+---
+
+## 🔬 research-tools
+
+**Go deep on a topic.**
+
+- 📓 **notebooklm** — full programmatic NotebookLM (notebooks, sources, podcasts & other artifacts)
+- ▶️ **yt-search** — structured YouTube search with view counts, dates & auto-insights
+
+```
+"Create a NotebookLM podcast about this PDF"
+"Search YouTube for recent talks on this topic"
+```
+
+---
+
 ## 🚀 Getting Started
 
 ### Prerequisites
@@ -111,7 +196,7 @@ This marketplace is your one-stop shop for Claude Code extensions that make life
      "marketplaces": [
        {
          "name": "davideasaf-marketplace",
-         "source": "https://github.com/yourusername/davideasaf-marketplace.git"
+         "source": "https://github.com/davideasaf/davideasaf-marketplace.git"
        }
      ]
    }
@@ -120,7 +205,7 @@ This marketplace is your one-stop shop for Claude Code extensions that make life
    Or use the marketplace installation command:
    ```bash
    # Add marketplace via Claude Code
-   /marketplace add https://github.com/yourusername/davideasaf-marketplace.git
+   /marketplace add https://github.com/davideasaf/davideasaf-marketplace.git
    ```
 
 2. **Configure plugin-specific credentials:**
@@ -289,8 +374,8 @@ This marketplace is built on three principles:
 
 ## 📊 Stats
 
-- **Total Plugins:** 2 (both ready to use!)
-- **Languages:** TypeScript, Python
+- **Total Plugins:** 9 (all ready to use!)
+- **Languages:** TypeScript, Python, Shell
 - **Protocols:** MCP, Skills, Scripts
 - **Lines of Code:** 3000+ (and counting!)
 - **Tokens Consumed:** 🪙🪙🪙🪙🪙 (too many to count)

@@ -1,0 +1,9 @@
+{
+  "name": "research-tools",
+  "description": "Research and knowledge tools: full programmatic NotebookLM access (notebooks, sources, podcasts, and other artifacts) and structured YouTube search with view counts, dates, and auto-insights.",
+  "version": "1.0.0",
+  "author": {
+    "name": "David Asaf"
+  },
+  "keywords": ["notebooklm", "youtube", "search", "research", "knowledge"]
+}

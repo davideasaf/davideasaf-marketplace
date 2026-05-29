@@ -1,0 +1,15 @@
+{
+  "description": "Portrait and headshot prompts",
+  "prompts": [
+    "Professional headshot of a confident business person, neutral background, soft studio lighting, sharp focus on eyes, 85mm portrait lens",
+    "Candid portrait of an artist in their studio, natural window light, paint-stained clothes, authentic and creative atmosphere",
+    "Editorial fashion portrait, high contrast lighting, dramatic shadows, model looking away from camera, magazine quality",
+    "Environmental portrait of a chef in restaurant kitchen, warm ambient lighting, professional attire, authentic setting",
+    "Natural light portrait outdoors during golden hour, soft bokeh background, warm tones, genuine expression",
+    "Corporate headshot with modern office background, professional attire, approachable smile, clean and polished",
+    "Lifestyle portrait of someone enjoying coffee at a cafe, natural light, candid moment, warm color palette",
+    "Studio portrait with colored gel lighting, creative makeup, high fashion aesthetic, bold and artistic",
+    "Documentary-style portrait of a craftsperson at work, showing hands and tools, storytelling composition",
+    "Minimalist portrait on solid color background, subject centered, simple and elegant, focus on expression"
+  ]
+}

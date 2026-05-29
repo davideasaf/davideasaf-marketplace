@@ -1,0 +1,9 @@
+{
+  "name": "browser-tools",
+  "description": "Stealth browser automation: launches real Google Chrome with your profile to get past CAPTCHAs and bot detection on sites like Google and Cloudflare-protected pages, when standard headless automation gets blocked.",
+  "version": "1.0.0",
+  "author": {
+    "name": "David Asaf"
+  },
+  "keywords": ["browser-automation", "stealth", "chrome", "captcha", "bot-detection", "web-automation"]
+}
