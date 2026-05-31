@@ -1,6 +1,6 @@
 ---
 name: ask-claude
-description: Use when you want a second opinion from Claude Opus on code, debugging, design, refactors, or planning. The wrapper is built for orchestration — start partners in the background, watch their JSONL event stream live to detect hangs vs. real thinking, then collect final results. Pinned to claude-opus-4-7.
+description: Use when you want a second opinion from Claude Opus on code, debugging, design, refactors, or planning. The wrapper is built for orchestration — start partners in the background, watch their JSONL event stream live to detect hangs vs. real thinking, then collect final results. Pinned to claude-opus-4-8.
 ---
 
 # ask-claude
@@ -120,7 +120,7 @@ on the same code from different angles) or for fan-out research.
 | `--resume <session-id>` | Resume a specific claude session |
 | `--session-id <uuid>` | Pin to an explicit session UUID |
 | `--fork-session` | Branch from `--resume` into a new session id |
-| `--model <name>` | Override model (default: `claude-opus-4-7`) |
+| `--model <name>` | Override model (default: `claude-opus-4-8`) |
 | `--bare` | Pass `--bare` to claude — skip CLAUDE.md, hooks, plugins, auto-memory. **Note:** strips OAuth, so requires `ANTHROPIC_API_KEY`. Use only when you want a clean room and have the env set. |
 
 ## Run state layout

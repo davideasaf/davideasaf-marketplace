@@ -22,7 +22,7 @@
 
 set -euo pipefail
 
-MODEL="claude-opus-4-7"
+MODEL="claude-opus-4-8"
 TOOL="claude"
 RUN_ROOT="${ASK_RUN_ROOT:-$HOME/.cache/ask-runs}/$TOOL"
 mkdir -p "$RUN_ROOT"
@@ -252,7 +252,7 @@ Start/ask options (claude-specific):
   --session-id <uuid>         Pin to an explicit session UUID
   --fork-session              Branch from --resume into a new session id
   --bare                      Pass --bare to claude (skip hooks/CLAUDE.md/skills) for a clean partner
-  --model <name>              Override model (default: claude-opus-4-7)
+  --model <name>              Override model (default: claude-opus-4-8)
 
 Legacy positional invocation (no subcommand) is treated as `ask <args>`.
 EOF
