@@ -9,7 +9,9 @@ description: >-
   text, or process any audio/video file (.m4a, .mp4, .wav, .mp3, .webm, .ogg, etc.)
   into a readable transcript. Also use when the user mentions "transcribe", "diarize",
   "meeting notes from recording", "who said what", or wants to analyze/summarize an
-  audio file.
+  audio file. For VIDEO recordings (screen-shares, OBS/Teams captures), it also splits
+  the audio out and extracts candidate screenshot frames at scene changes so an agent
+  lands with transcript + audio + video + timestamped frames to intake.
 ---
 
 # Transcribe Audio
@@ -44,6 +46,57 @@ Pick the right engine from context — don't ask unless genuinely ambiguous:
 **AssemblyAI is NOT in the routing table** — see policy below.
 
 **xAI multi-speaker caveat (verified 2026-05-19):** xAI diarization works on clips up to ~45 min (returned 1, 2, 7, 9, 10, 11 distinct speakers at 60s/90s/10/25/35/45 min respectively on the AI Tech Guild recording). On the same source audio at 57 min, xAI silently drops the `speaker` field from the response entirely — no error, no warning. For multi-speaker work over ~45 min, route to Deepgram OR chunk the audio at ~40-min boundaries with ffmpeg before sending to xAI. Short 1:1s and standups can route to xAI directly if cost matters.
+
+## 🎥 Video intake — split audio + transcribe + candidate frames
+
+When the input is a **video** (`.mp4`, `.mov`, `.mkv`, `.webm`) — especially a
+screen-recording (OBS, Teams) where the shared screen carries information — use the
+**`transcribe_video.py`** orchestrator instead of an engine script directly. One command:
+
+1. **Splits** the audio out to a mono mp3 (so you have audio + video separately).
+2. **Transcribes** that audio via the chosen engine (reuses the engine scripts below).
+3. **Extracts candidate frames** at scene changes (slide/screen swaps) + writes a
+   `manifest.md` correlating each frame to a timestamp you can match against the
+   transcript's `[MM:SS]` tags.
+
+```bash
+uv run ~/.claude/skills/transcribe/scripts/transcribe_video.py <video> [options]
+```
+
+| Flag | Description | Default |
+|------|-------------|---------|
+| `--engine {deepgram,assemblyai,groq,xai}` | Transcription engine | `deepgram` |
+| `--output PATH` | Transcript path | `<video>.transcript.md` |
+| `--frames-dir PATH` | Where candidate frames go | `<video-stem>-frames/` beside the video |
+| `--scene-threshold F` | Scene sensitivity 0–1, lower = more frames | `0.4` |
+| `--max-frames N` | Cap on candidate frames (evenly sampled if exceeded) | `60` |
+| `--min-gap S` | Min seconds between kept frames (dedupe) | `8` |
+| `--interval S` | Fallback: if <3 scene changes, sample 1 frame / S sec | `120` |
+| `--speakers N` | Forwarded to the assemblyai engine | — |
+| `--no-frames` / `--no-transcribe` / `--no-keep-audio` | Skip a stage | off |
+
+**Engine choice for video:** default `deepgram` (keyterm-biased, multi-speaker). For a
+**clean 1:1**, use `--engine assemblyai` — it diarizes cross-talk noticeably better on
+low-speaker-count audio (see ASR comparison artifact, Round 4). Then relabel speakers
+(see "After Transcription").
+
+### How to use the frames — transcript-guided is PRIMARY
+
+The scene-detected + interval frames are a **coverage net, not a curated set.** The
+reliable way to capture screen content is **transcript-guided**:
+
+1. Read the transcript; find moments where a speaker references on-screen content
+   ("let me show you", "see here", "this dashboard/diagram/form").
+2. View the nearest candidate frame(s). To grab an **exact** moment not in the set:
+   `ffmpeg -ss <seconds> -i "<video>" -frames:v 1 -q:v 2 out.png`.
+3. **Keep only vault-worthy frames** (slides, diagrams, org charts, forms) — crop out
+   webcam tiles / app chrome, rename descriptively, save into the note's `- photos/`
+   folder, embed `![[name.png]]`. Extract info from transient frames and discard them.
+
+**Scene-detection caveat:** windowed shares (a Teams window with static chrome + a
+small changing sub-region) produce low whole-frame scene scores — `0.4` catches the
+big screen swaps; lower `--scene-threshold` (e.g. `0.2`) for more granularity, or just
+rely on transcript-guided extraction. (Full-screen slide decks register cleanly at `0.4`.)
 
 ## ⛔️ AssemblyAI is permission-gated, never auto-fallback
 
@@ -232,7 +285,11 @@ the transcript wherever it goes.
    transcript wins on audio fidelity. Per the David memory
    `feedback_prefer_teams_vtt_for_speakers` — VTT is canonical for *who*; ASR
    is canonical for *what*.
-4. **Ask what analysis they need** — summarize, extract action items, find
+4. **For video intake** — open the frames `manifest.md`, then do transcript-guided
+   triage (see the Video intake section): keep vault-worthy frames into the note's
+   `- photos/` folder, extract info from the rest, and delete the `-frames/` working
+   dir once keepers are saved.
+5. **Ask what analysis they need** — summarize, extract action items, find
    topics, etc.
 
 ## Supported Formats
