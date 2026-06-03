@@ -1,7 +1,7 @@
 {
   "name": "ask-models",
   "description": "Consult other AI models for a second opinion via orchestration-friendly CLI wrappers: Claude Opus (ask-claude), OpenAI Codex/GPT (ask-codex), any Cursor-hosted model (ask-cursor), and Google's Antigravity/Gemini (ask-antigravity). Start partners in the background, watch their JSONL event stream live to tell thinking from hung, then collect clean final results.",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "author": {
     "name": "David Asaf"
   },
