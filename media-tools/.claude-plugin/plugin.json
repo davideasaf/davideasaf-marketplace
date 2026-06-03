@@ -1,7 +1,7 @@
 {
   "name": "media-tools",
   "description": "Audio, video, and image tooling: transcribe/diarize recordings (Groq Whisper, xAI, Deepgram Nova-3), clean WebVTT transcripts into token-efficient text, and generate or edit images via Gemini (nanobanana) and OpenAI Codex (gpt-image).",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "author": {
     "name": "David Asaf"
   },

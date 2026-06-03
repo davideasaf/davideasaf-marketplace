@@ -1,5 +1,6 @@
 ---
 name: transcribe
+version: '1.1.0'
 description: >-
   Transcribe audio/video files — voice notes, recordings, meetings, conversations.
   Uses Groq Whisper (fast, free) by default for single-speaker audio under 25 MB,
@@ -11,7 +12,9 @@ description: >-
   "meeting notes from recording", "who said what", or wants to analyze/summarize an
   audio file. For VIDEO recordings (screen-shares, OBS/Teams captures), it also splits
   the audio out and extracts candidate screenshot frames at scene changes so an agent
-  lands with transcript + audio + video + timestamped frames to intake.
+  lands with transcript + audio + video + timestamped frames to intake — and, for
+  meeting-app video (Teams/Zoom/Meet), can resolve diarized speaker labels to real names
+  from the on-screen participant gallery instead of asking.
 ---
 
 # Transcribe Audio
@@ -93,10 +96,47 @@ reliable way to capture screen content is **transcript-guided**:
    webcam tiles / app chrome, rename descriptively, save into the note's `- photos/`
    folder, embed `![[name.png]]`. Extract info from transient frames and discard them.
 
-**Scene-detection caveat:** windowed shares (a Teams window with static chrome + a
+**Scene-detection caveat:** windowed shares (a meeting window with static chrome + a
 small changing sub-region) produce low whole-frame scene scores — `0.4` catches the
 big screen swaps; lower `--scene-threshold` (e.g. `0.2`) for more granularity, or just
 rely on transcript-guided extraction. (Full-screen slide decks register cleanly at `0.4`.)
+
+### Identify speakers from the frames FIRST — before asking the user
+
+For a video from a meeting app (Teams / Zoom / Meet / Webex) the **participant gallery
+is on screen**, so the diarized `Speaker A/B/C…` labels can usually be resolved to real
+names **deterministically from the video** — don't jump straight to asking the user. The
+gallery gives you three independent signals:
+
+1. **Name labels** under each tile → the roster of who's actually present (often fewer
+   than the invite list — no-shows and listen-only attendees show here).
+2. **Active-speaker highlight** — most clients draw a colored border / ring around the
+   tile of whoever is currently talking. Sample a frame at a timestamp where one diarized
+   speaker has a clean solo stretch, and the highlighted tile names them.
+3. **Mute icons** — a muted tile cannot be the active speaker. This breaks ties and
+   catches diarization *conflations* (when one bucket merges two voices): if the
+   diarizer attributes a line to someone whose tile is muted at that timestamp, the line
+   belongs to the other unmuted participant.
+
+**Workflow:**
+
+1. Pick 1-2 clean solo stretches per diarized speaker from the transcript's `[MM:SS]` tags.
+2. Extract the exact frame and a zoomed crop of the gallery strip:
+   ```bash
+   ffmpeg -ss <seconds> -i "<video>" -frames:v 1 -q:v 2 /tmp/frame.png
+   # gallery strip only (top band), upscaled so labels are legible:
+   ffmpeg -ss <seconds> -i "<video>" -frames:v 1 -vf "crop=iw:ih*0.16:0:ih*0.09,scale=1920:-1" /tmp/strip.png
+   ```
+   (Adjust the crop band to where the client renders tiles — top for Teams, can be a
+   side rail for Zoom speaker view.)
+3. Read the highlighted tile + name label at each speaker's solo moment → build the
+   `Speaker X → Name` map. Cross-check mute state to resolve any conflation.
+4. Relabel the transcript with the confirmed names (`Speaker A` → `Name`, `replace_all`),
+   and add a short speaker-key note recording how you resolved it + any known conflation.
+5. **Only fall back to asking the user** when the gallery is unavailable — names hidden,
+   a full-bleed screen-share covers the tiles for the whole call, or the highlight is
+   ambiguous (heavy cross-talk, gallery paged). Then show sample utterances per label and
+   ask, as for audio-only.
 
 ## ⛔️ AssemblyAI is permission-gated, never auto-fallback
 
@@ -276,21 +316,27 @@ the transcript wherever it goes.
 ## After Transcription
 
 1. **Read the file** to load it into context
-2. **For diarized transcripts** — If the user mentioned participant names, show
-   sample utterances from each speaker label and ask who is who. Then
-   find-and-replace `Speaker A` → name throughout (use `replace_all: true`).
-3. **For Ford meetings — prefer the Teams VTT for speaker identity.** If a
-   Teams VTT exists for the same meeting (run through `/vtt-processor`), the
-   VTT wins on speaker identity (real names baked into cue tags); the Deepgram
-   transcript wins on audio fidelity. Per the David memory
-   `feedback_prefer_teams_vtt_for_speakers` — VTT is canonical for *who*; ASR
-   is canonical for *what*.
-4. **For video intake** — open the frames `manifest.md`, then do transcript-guided
-   triage (see the Video intake section): keep vault-worthy frames into the note's
-   `- photos/` folder, extract info from the rest, and delete the `-frames/` working
-   dir once keepers are saved.
-5. **Ask what analysis they need** — summarize, extract action items, find
-   topics, etc.
+2. **For a diarized VIDEO from a meeting app (Teams / Zoom / Meet / Webex) — resolve
+   speakers from the participant gallery FIRST.** Read the on-screen tile name labels +
+   active-speaker highlight + mute icons at each speaker's solo moment (see "Identify
+   speakers from the frames FIRST" in the Video intake section) and relabel `Speaker A`
+   → name (`replace_all: true`). This is deterministic and beats asking. Only fall back
+   to asking the user when the gallery is unavailable (names hidden, full-bleed
+   screen-share, ambiguous highlight).
+3. **For a diarized AUDIO-ONLY transcript** — if the user mentioned participant names,
+   show sample utterances from each speaker label and ask who is who, then
+   find-and-replace `Speaker A` → name throughout (`replace_all: true`).
+4. **If a meeting-platform VTT exists for the same recording, prefer it for speaker
+   identity.** When the meeting client also exported a WebVTT caption file (run it
+   through `/vtt-processor`), the VTT wins on speaker identity (real names baked into
+   cue tags) while the ASR transcript wins on audio fidelity — VTT is canonical for
+   *who*, ASR for *what*. (This is an alternative to the gallery method in step 2 — use
+   whichever signal you have.)
+5. **For video intake (screen content)** — open the frames `manifest.md`, then do
+   transcript-guided triage (see the Video intake section): keep the vault-/note-worthy
+   frames (slides, diagrams), extract info from the rest, and delete the `-frames/`
+   working dir once keepers are saved.
+6. **Ask what analysis they need** — summarize, extract action items, find topics, etc.
 
 ## Supported Formats
 
