@@ -179,6 +179,7 @@ cmd_start() {
       --yolo) yolo=1; shift;;
       --no-auto-yolo) project_yolo_auto=0; shift;;
       --) shift; break;;
+      -) break;;  # bare '-' is the stdin prompt sentinel, not an option
       -*) echo "Unknown option: $1" >&2; usage >&2; exit 1;;
       *) break;;
     esac

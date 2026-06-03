@@ -142,6 +142,35 @@ When a `project-dir` is supplied, the wrapper passes
 `--dangerously-skip-permissions` automatically so agy can freely read files
 in the workspace. Pass `--no-auto-yolo` to opt out.
 
+## ⚠️ Read-only reviews & write safety
+
+`agy` has **no read-only permission mode** — only `--dangerously-skip-permissions`
+(auto-approve *everything*, including file writes and shell) or `--sandbox`
+(terminal restrictions only). Because passing a `project-dir` auto-enables
+skip-permissions, **agy can and sometimes WILL edit/create/delete files in your
+working tree during what you intended as a read-only review** — observed in
+practice: asked only to *review* a branch, it rewrote scripts, wrote a new
+migration, and edited a workflow, unprompted (and its migration contained a real
+bug). Treat agy's tree edits as untrusted: review every diff, never assume a
+"review" left the tree untouched.
+
+For a **read-only consultation/review**, do one of:
+- **Inline the context, omit `project-dir`.** Paste the diff/files into the
+  prompt (e.g. `git diff origin/main | ask.sh start -`). No `project-dir` ⇒ no
+  auto-yolo ⇒ no write access. Best default for reviews.
+- **Run in a throwaway git worktree** (`git worktree add`) and point agy there,
+  so any unsolicited edits are isolated and reviewable, never on your real branch.
+- If you must pass the live `project-dir`, add an explicit
+  "READ-ONLY: do not create/modify/delete any files" line to the prompt — but
+  models ignore it, so still `git status`/`git diff` afterward and revert stray
+  edits (`git checkout HEAD -- <file>` restores from the last commit; note plain
+  `git checkout --` restores from the index, which agy may have staged).
+
+Reliability note: agy (esp. Gemini Flash tiers) is high-recall but can be
+**low-precision** — it may report confident findings that are hallucinated or
+based on its *local* DB/state rather than the target. Verify every concrete
+claim (file:line, prod state) before acting. See `feedback_multi_model_reviews`.
+
 ## Run state layout
 
 ```
