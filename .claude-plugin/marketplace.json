@@ -1,6 +1,7 @@
 {
   "name": "davideasaf-marketplace",
-  "version": "1.2.0",
+  "version": "1.3.0",
+  "description": "A personal marketplace of reusable AI skills, plugins, and MCP-powered workflows for development, research, media, finance, and model collaboration.",
   "owner": {
     "name": "David Asaf"
   },
@@ -49,6 +50,11 @@
       "name": "research-tools",
       "source": "./research-tools",
       "description": "Research & knowledge tools: NotebookLM API and structured YouTube search with insights."
+    },
+    {
+      "name": "fable",
+      "source": "./fable",
+      "description": "Use Cursor-hosted Fable 5 as an on-demand strategic advisor or as a durable orchestrator for bounded Ask Codex worker programs."
     }
   ]
 }

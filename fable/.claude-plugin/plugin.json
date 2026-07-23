@@ -1,0 +1,9 @@
+{
+  "name": "fable",
+  "description": "Use Cursor-hosted Fable 5 as either an on-demand strategic advisor or a durable orchestrator for bounded Ask Codex worker programs.",
+  "version": "1.0.0",
+  "author": {
+    "name": "David Asaf"
+  },
+  "keywords": ["fable", "advisor", "orchestration", "cursor", "codex", "multi-agent", "long-running", "planning"]
+}

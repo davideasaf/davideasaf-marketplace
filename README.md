@@ -19,6 +19,7 @@ This marketplace is your one-stop shop for Claude Code extensions that make life
 | 🐙 **[github-dev-flow](./github-dev-flow/)** | GitHub issue lifecycle & dev workflow | Create issues with evidence, manage project boards, worktree-isolated planning  | ✅ Ready |
 | 📐 **[linear-dev-flow](./linear-dev-flow/)** | Linear issue lifecycle & dev workflow  | Plan in Todo, implement from Dev Ready, deliver to In Review                     | ✅ Ready |
 | 🤝 **[ask-models](#-ask-models)**           | Second opinions from other AI models   | Orchestrate Claude, Codex/GPT, Cursor models & Antigravity/Gemini with live JSONL streams | ✅ Ready |
+| 🧭 **[fable](#-fable)**                     | Strategic advice & orchestration       | Consult Fable 5 or run durable, bounded Ask Codex worker programs              | ✅ Ready |
 | 🎬 **[media-tools](#-media-tools)**         | Audio, video & image tooling           | Transcribe/diarize recordings, clean VTT, generate/edit images (Gemini & OpenAI) | ✅ Ready |
 | 🌐 **[browser-tools](#-browser-tools)**     | Stealth browser automation             | Real Chrome + your profile to get past CAPTCHAs / bot detection                 | ✅ Ready |
 | 🧰 **[dev-utils](#-dev-utils)**             | Everyday developer utilities           | Git worktrees & styled Mermaid diagrams                                         | ✅ Ready |
@@ -116,6 +117,25 @@ Each skill wraps another AI CLI for orchestration: kick a partner off in the bac
 ```
 
 > Requires the respective partner CLIs installed (`claude`, `codex`, `cursor-agent`, `agy`).
+
+---
+
+## 🧭 fable
+
+**Use Fable 5 for a hard decision—or let it orchestrate a sustained program.**
+
+- 🧠 **fable-advisor** — read-only strategic consultation for consequential,
+  uncertain decisions
+- 🗂️ **fable-orchestrator** — durable plans, bounded Ask Codex worker waves,
+  explicit approval gates, crash recovery, and budget enforcement
+
+```
+"Ask Fable to challenge this migration plan"
+"Manage this multi-workstream project with Fable as orchestrator"
+```
+
+> Requires Cursor's `agent` CLI with Fable 5 access. Orchestrated programs also
+> require the `ask-codex` skill from `ask-models`.
 
 ---
 
@@ -374,7 +394,7 @@ This marketplace is built on three principles:
 
 ## 📊 Stats
 
-- **Total Plugins:** 9 (all ready to use!)
+- **Total Plugins:** 10 (all ready to use!)
 - **Languages:** TypeScript, Python, Shell
 - **Protocols:** MCP, Skills, Scripts
 - **Lines of Code:** 3000+ (and counting!)
