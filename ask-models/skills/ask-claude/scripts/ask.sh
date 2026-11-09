@@ -22,7 +22,9 @@
 
 set -euo pipefail
 
-MODEL="claude-opus-4-8"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+LIFECYCLE="${ASK_CLAUDE_HELPER:-$SCRIPT_DIR/lifecycle.py}"
+MODEL="claude-opus-5-5"
 TOOL="claude"
 RUN_ROOT="${ASK_RUN_ROOT:-$HOME/.cache/ask-runs}/$TOOL"
 mkdir -p "$RUN_ROOT"
@@ -32,6 +34,20 @@ mkdir -p "$RUN_ROOT"
 now_iso() { date -u +"%Y-%m-%dT%H:%M:%SZ"; }
 now_epoch() { date -u +"%s"; }
 new_run_id() { printf '%s-%s' "$(date -u +%Y%m%d-%H%M%S)" "$(uuidgen | tr 'A-Z' 'a-z' | cut -c1-6)"; }
+
+normalize_model() {
+  local requested lower
+  requested="$1"
+  lower=$(printf '%s' "$requested" | tr '[:upper:]' '[:lower:]')
+  case "$lower" in
+    fable|fable-5.2|fable-5-2) printf '%s' "claude-fable-5-2";;
+    fable-5.1|fable-5-1) printf '%s' "claude-fable-5-1";;
+    opus|opus-5.5|opus-5-5) printf '%s' "claude-opus-5-5";;
+    sonnet|sonnet-5.5|sonnet-5-5) printf '%s' "claude-sonnet-5-5";;
+    opus-5) printf '%s' "claude-opus-5";;
+    *) printf '%s' "$requested";;
+  esac
+}
 
 run_dir() { printf '%s/%s' "$RUN_ROOT" "$1"; }
 
@@ -57,101 +73,76 @@ resolve_run() {
 }
 
 write_meta() {
-  local dir="$1" key="$2" val="$3"
-  local meta="$dir/meta.json"
-  if [[ ! -f "$meta" ]]; then echo '{}' > "$meta"; fi
-  local tmp="$meta.tmp"
-  jq --arg k "$key" --arg v "$val" '.[$k]=$v' "$meta" > "$tmp" && mv "$tmp" "$meta"
+  update_meta "$1" "$2" "$3" string
 }
 
 write_meta_num() {
-  local dir="$1" key="$2" val="$3"
-  local meta="$dir/meta.json"
-  if [[ ! -f "$meta" ]]; then echo '{}' > "$meta"; fi
-  local tmp="$meta.tmp"
-  jq --arg k "$key" --argjson v "$val" '.[$k]=$v' "$meta" > "$tmp" && mv "$tmp" "$meta"
+  update_meta "$1" "$2" "$3" number
+}
+
+update_meta() {
+  # The watcher, wait, and status commands can finalize the same run together.
+  # Lock the read/modify/write, not just rename: unique temporary names alone
+  # still lose fields when two writers read the same old metadata.
+  python3 - "$1" "$2" "$3" "$4" <<'PY'
+import fcntl, json, os, pathlib, sys, tempfile
+directory, key, value, kind = sys.argv[1:]
+path = pathlib.Path(directory) / "meta.json"
+with (path.parent / ".metadata.lock").open("a") as lock:
+    fcntl.flock(lock, fcntl.LOCK_EX)
+    data = json.loads(path.read_text()) if path.exists() else {}
+    data[key] = json.loads(value) if kind == "number" else value
+    fd, temporary = tempfile.mkstemp(prefix=".metadata-", dir=path.parent)
+    try:
+        with os.fdopen(fd, "w") as output:
+            json.dump(data, output, indent=2)
+            output.write("\n")
+        os.replace(temporary, path)
+    finally:
+        if os.path.exists(temporary):
+            os.unlink(temporary)
+PY
 }
 
 # Mark a run terminal: finalize meta.json with status, exit_code, ended_at,
 # and extract the session_id + final response text from events.jsonl.
 finalize_run() {
-  local dir="$1"
-  local events="$dir/events.jsonl"
-  local final="$dir/final.txt"
-  local exit_code
-  exit_code=$(cat "$dir/exit_code" 2>/dev/null || echo "")
+  python3 "$LIFECYCLE" finalize "$1"
+}
 
-  local sid=""
-  if [[ -f "$events" ]]; then
-    sid=$(jq -r 'select(.session_id) | .session_id' "$events" 2>/dev/null | head -n1 || true)
+refresh_run() {
+  local dir="$1" pid status
+  status=$(jq -r '.status' "$dir/meta.json")
+  pid=$(jq -r '.pid // empty' "$dir/meta.json")
+  if [[ "$status" == "running" ]] && { [[ -f "$dir/supervisor.done" ]] || { [[ -n "$pid" ]] && ! kill -0 "$pid" 2>/dev/null; }; }; then
+    finalize_run "$dir"
   fi
-  [[ -n "$sid" ]] && write_meta "$dir" session_id "$sid"
+}
 
-  if [[ -f "$events" && ! -s "$final" ]]; then
-    local res
-    res=$(jq -r 'select(.type=="result") | .result // empty' "$events" 2>/dev/null | tail -n1 || true)
-    if [[ -n "$res" ]]; then
-      printf '%s\n' "$res" > "$final"
-    else
-      jq -r 'select(.type=="stream_event" and .event.type=="content_block_delta" and .event.delta.type=="text_delta") | .event.delta.text' "$events" 2>/dev/null \
-        | tr -d '\000' > "$final" || true
-    fi
+emit_result() {
+  local dir="$1" status code
+  refresh_run "$dir"
+  status=$(jq -r '.status' "$dir/meta.json")
+  if [[ "$status" == "running" ]]; then
+    echo "Run is still running. Use wait or status." >&2
+    return 2
   fi
-
-  local is_error="false"
-  if [[ -f "$events" ]]; then
-    local result_line
-    result_line=$(jq -c 'select(.type=="result")' "$events" 2>/dev/null | tail -n1 || true)
-    if [[ -n "$result_line" ]]; then
-      # Flatten to a uniform set of fields. Claude uses total_cost_usd and
-      # nests tokens under .usage.{input,output}_tokens; we surface both.
-      local pairs
-      pairs=$(printf '%s' "$result_line" | jq -r '
-        {
-          subtype: .subtype,
-          duration_ms: .duration_ms,
-          duration_api_ms: .duration_api_ms,
-          num_turns: .num_turns,
-          stop_reason: .stop_reason,
-          cost_usd: (.cost_usd // .total_cost_usd),
-          input_tokens: (.input_tokens // .usage.input_tokens),
-          output_tokens: (.output_tokens // .usage.output_tokens),
-          cache_read_input_tokens: .usage.cache_read_input_tokens,
-          cache_creation_input_tokens: .usage.cache_creation_input_tokens,
-          terminal_reason: .terminal_reason
-        }
-        | to_entries[]
-        | select(.value != null and .value != "")
-        | "\(.key)\t\(.value | tostring)"
-      ' 2>/dev/null)
-      while IFS=$'\t' read -r k v; do
-        [[ -z "$k" ]] && continue
-        if [[ "$v" =~ ^-?[0-9]+(\.[0-9]+)?$ ]]; then
-          write_meta_num "$dir" "$k" "$v"
-        else
-          write_meta "$dir" "$k" "$v"
-        fi
-      done <<< "$pairs"
-      # is_error means the model returned an error result (auth, max-turns, budget, etc.)
-      is_error=$(printf '%s' "$result_line" | jq -r '(.is_error // false) | tostring' 2>/dev/null)
-    fi
-  fi
-
-  write_meta "$dir" ended_at "$(now_iso)"
-  if [[ -n "$exit_code" ]]; then
-    write_meta_num "$dir" exit_code "$exit_code"
-  fi
-  if [[ "$is_error" == "true" || ( -n "$exit_code" && "$exit_code" != "0" ) ]]; then
-    write_meta "$dir" status "failed"
-  else
-    write_meta "$dir" status "done"
-  fi
+  [[ ! -s "$dir/final.txt" ]] || cat "$dir/final.txt"
+  case "$status" in
+    done) return 0;;
+    cancelled) return 130;;
+    *) code=$(jq -r '.exit_code // 1' "$dir/meta.json")
+       [[ "$code" -gt 0 && "$code" -lt 256 ]] || code=1
+       echo "Run failed; check $dir/stderr.log and meta.json" >&2
+       return "$code";;
+  esac
 }
 
 print_status() {
   local id="$1" dir="$2"
   local meta="$dir/meta.json" events="$dir/events.jsonl"
   local status pid sid started ended
+  refresh_run "$dir"
   status=$(jq -r '.status // "unknown"' "$meta" 2>/dev/null)
   pid=$(jq -r '.pid // empty' "$meta" 2>/dev/null)
   sid=$(jq -r '.session_id // empty' "$meta" 2>/dev/null)
@@ -169,7 +160,9 @@ print_status() {
     n_events=$(wc -l < "$events" | tr -d ' ')
     if [[ "$n_events" -gt 0 ]]; then
       local mtime
-      mtime=$(stat -f %m "$events" 2>/dev/null || stat -c %Y "$events" 2>/dev/null || echo "")
+      # GNU form first: on Linux/WSL, `stat -f` means filesystem status and
+      # prints multi-line output that breaks the age arithmetic below.
+      mtime=$(stat -c %Y "$events" 2>/dev/null || stat -f %m "$events" 2>/dev/null || echo "")
       if [[ -n "$mtime" ]]; then
         last_event_age=$(( $(now_epoch) - mtime ))
       fi
@@ -252,7 +245,18 @@ Start/ask options (claude-specific):
   --session-id <uuid>         Pin to an explicit session UUID
   --fork-session              Branch from --resume into a new session id
   --bare                      Pass --bare to claude (skip hooks/CLAUDE.md/skills) for a clean partner
-  --model <name>              Override model (default: claude-opus-4-8)
+  --model <name>              Override model (default: claude-opus-5-5)
+                              Aliases: sonnet -> claude-sonnet-5-5,
+                                       fable -> claude-fable-5-2,
+                                       opus  -> claude-opus-5-5
+
+Safe CLI controls (passed as individual arguments):
+  --safe-mode --restricted --strict-mcp-config --disable-slash-commands
+  --no-session-persistence --no-chrome
+  --tools VALUE --allowedTools VALUE --disallowedTools VALUE
+  --permission-mode VALUE --permission-prompts VALUE --max-budget-usd VALUE
+  --effort VALUE --system-prompt VALUE --setting-sources VALUE --mcp-config VALUE
+Permission bypass and unknown options are rejected. Use -- before option-like prompts.
 
 Legacy positional invocation (no subcommand) is treated as `ask <args>`.
 EOF
@@ -261,6 +265,7 @@ EOF
 cmd_start() {
   local mode="new" resume_target="" session_id="" fork="false" bare="false"
   local model="$MODEL"
+  local -a controls=()
   while [[ $# -gt 0 ]]; do
     case "$1" in
       --continue|-c) mode="continue"; shift;;
@@ -268,15 +273,28 @@ cmd_start() {
       --session-id) session_id="${2:?--session-id needs uuid}"; shift 2;;
       --fork-session) fork="true"; shift;;
       --bare) bare="true"; shift;;
+      --safe-mode|--restricted|--strict-mcp-config|--disable-slash-commands|--no-session-persistence|--no-chrome)
+        controls+=("$1"); shift;;
+      --tools|--allowedTools|--disallowedTools|--permission-mode|--permission-prompts|--max-budget-usd|--effort|--system-prompt|--setting-sources|--mcp-config)
+        [[ $# -ge 2 ]] || { echo "Error: $1 needs a value" >&2; return 2; }
+        if [[ "$1" == "--permission-mode" && "$2" == "bypassPermissions" ]]; then
+          echo "Error: permission bypass is not supported" >&2; return 2
+        fi
+        controls+=("$1" "$2"); shift 2;;
       --model) model="${2:?--model needs name}"; shift 2;;
       --) shift; break;;
+      --*) echo "Error: unsupported option $1" >&2; return 2;;
       *) break;;
     esac
   done
 
+  model="$(normalize_model "$model")"
+
   if [[ $# -lt 1 ]]; then echo "Error: prompt required" >&2; usage >&2; exit 1; fi
   local prompt_arg="$1"; shift
   local project_dir="${1:-}"
+  [[ $# -le 1 ]] || { echo "Error: unexpected extra arguments" >&2; return 2; }
+  [[ -z "$project_dir" || -d "$project_dir" ]] || { echo "Error: project directory does not exist" >&2; return 2; }
 
   local prompt
   if [[ "$prompt_arg" == "-" ]]; then
@@ -293,6 +311,7 @@ cmd_start() {
 
   local -a cmd=(claude --print --model "$model" --output-format stream-json --verbose --include-partial-messages)
   [[ "$bare" == "true" ]] && cmd+=(--bare)
+  if [[ ${#controls[@]} -gt 0 ]]; then cmd+=("${controls[@]}"); fi
   case "$mode" in
     continue) cmd+=(--continue);;
     resume)   cmd+=(--resume "$resume_target");;
@@ -312,20 +331,19 @@ cmd_start() {
   local cwd_arg=""
   [[ -n "$project_dir" ]] && cwd_arg="$project_dir"
 
-  (
-    if [[ -n "$cwd_arg" ]]; then cd "$cwd_arg"; fi
-    "${cmd[@]}" < "$dir/prompt.txt" > "$dir/events.jsonl" 2> "$dir/stderr.log"
-    echo $? > "$dir/exit_code"
-  ) &
+  python3 "$LIFECYCLE" supervise "$dir" "$cwd_arg" "${cmd[@]}" </dev/null >/dev/null 2>"$dir/supervisor.log" &
   local pid=$!
-  disown $pid 2>/dev/null || true
-  write_meta_num "$dir" pid "$pid"
-
-  (
-    while kill -0 "$pid" 2>/dev/null; do sleep 1; done
-    finalize_run "$dir"
-  ) >/dev/null 2>&1 &
-  disown $! 2>/dev/null || true
+  disown "$pid" 2>/dev/null || true
+  # The supervisor publishes its pid before ready. Do not race its metadata.
+  local attempt=0
+  while [[ ! -f "$dir/ready" && ! -f "$dir/supervisor.done" ]]; do
+    if ! kill -0 "$pid" 2>/dev/null || [[ "$attempt" -ge 100 ]]; then
+      echo "Error: supervisor did not become ready; inspect $dir" >&2
+      return 1
+    fi
+    sleep 0.05
+    attempt=$((attempt + 1))
+  done
 
   echo "RUN_ID=$run_id"
   echo "RUN_DIR=$dir"
@@ -362,49 +380,49 @@ cmd_wait() {
   local pid; pid=$(jq -r '.pid // empty' "$dir/meta.json")
   local start_ts; start_ts=$(now_epoch)
 
-  while [[ -n "$pid" ]] && kill -0 "$pid" 2>/dev/null; do
+  [[ "$timeout" =~ ^[0-9]+$ ]] || { echo "Error: timeout must be nonnegative seconds" >&2; return 2; }
+  while true; do
+    refresh_run "$dir"
+    [[ "$(jq -r '.status' "$dir/meta.json")" == "running" ]] || break
     if [[ "$timeout" -gt 0 && $(($(now_epoch)-start_ts)) -ge "$timeout" ]]; then
       echo "Timeout after ${timeout}s waiting for run $id" >&2
       return 124
     fi
-    sleep 1
+    sleep 0.1
   done
-  [[ ! -s "$dir/final.txt" ]] && finalize_run "$dir" || true
-  if [[ -s "$dir/final.txt" ]]; then
-    cat "$dir/final.txt"
-  else
-    echo "(no final response captured; check $dir/stderr.log)" >&2
-    return 1
-  fi
+  emit_result "$dir"
 }
 
 cmd_result() {
   local id_in="${1:?Usage: result <run-id|latest>}"
   local id; id="$(resolve_run "$id_in")" || exit 1
   local dir; dir="$(run_dir "$id")"
-  local status; status=$(jq -r '.status // "unknown"' "$dir/meta.json")
-  if [[ "$status" == "running" ]]; then
-    echo "Run $id is still running. Use 'wait' or 'status'." >&2
-    exit 2
-  fi
-  if [[ -s "$dir/final.txt" ]]; then cat "$dir/final.txt"; else echo "(empty)"; fi
+  emit_result "$dir"
 }
 
 cmd_cancel() {
   local id_in="${1:?Usage: cancel <run-id|latest>}"
   local id; id="$(resolve_run "$id_in")" || exit 1
   local dir; dir="$(run_dir "$id")"
-  local pid; pid=$(jq -r '.pid // empty' "$dir/meta.json")
-  if [[ -n "$pid" ]] && kill -0 "$pid" 2>/dev/null; then
-    kill "$pid" 2>/dev/null || true
-    sleep 1
-    kill -9 "$pid" 2>/dev/null || true
-    write_meta "$dir" status "cancelled"
-    write_meta "$dir" ended_at "$(now_iso)"
-    echo "Cancelled $id (pid $pid)"
-  else
+  refresh_run "$dir"
+  if [[ "$(jq -r '.status' "$dir/meta.json")" != "running" ]]; then
     echo "Run $id is not running."
+    return 0
   fi
+  # A request to the run's supervisor avoids signalling a stale/reused pid.
+  touch "$dir/cancel.request"
+  local attempt=0
+  while [[ ! -f "$dir/supervisor.done" && "$attempt" -lt 100 ]]; do
+    sleep 0.05
+    attempt=$((attempt + 1))
+  done
+  if [[ ! -f "$dir/supervisor.done" ]]; then
+    echo "Cancellation requested but not confirmed for $id" >&2
+    return 1
+  fi
+  finalize_run "$dir"
+  echo "Cancelled $id"
+
 }
 
 cmd_list() {
