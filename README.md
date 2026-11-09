@@ -105,7 +105,7 @@ This marketplace is your one-stop shop for Claude Code extensions that make life
 
 Each skill wraps another AI CLI for orchestration: kick a partner off in the background, watch its JSONL event stream to tell "still thinking" from "hung," then collect the clean final answer.
 
-- 🧠 **ask-claude** — Claude Opus (`claude --print --output-format stream-json`)
+- 🧠 **ask-claude** — Claude Opus 5.5 by default, plus Sonnet 5.5 and Fable 5.2 aliases (`claude --print --output-format stream-json`, supervised runs)
 - 🤖 **ask-codex** — OpenAI Codex / GPT (`codex exec --json`, high reasoning effort)
 - 🎯 **ask-cursor** — any Cursor-hosted model (Opus, GPT, Gemini, Grok, Composer…)
 - 🛰️ **ask-antigravity** — Google's Antigravity CLI (Gemini 3.x, and more)
@@ -117,6 +117,7 @@ Each skill wraps another AI CLI for orchestration: kick a partner off in the bac
 ```
 
 > Requires the respective partner CLIs installed (`claude`, `codex`, `cursor-agent`, `agy`).
+> The wrappers are bash scripts: macOS and Linux natively, Windows via WSL.
 
 ---
 

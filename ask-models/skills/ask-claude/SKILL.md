@@ -1,12 +1,13 @@
 ---
 name: ask-claude
-description: Use when you want a second opinion from Claude Opus on code, debugging, design, refactors, or planning. The wrapper is built for orchestration — start partners in the background, watch their JSONL event stream live to detect hangs vs. real thinking, then collect final results. Pinned to claude-opus-4-8.
+description: Use when a second opinion from Claude Opus 5.5, Sonnet 5.5, or Fable 5.2 would help with code, debugging, design, refactors, or planning.
 ---
 
 # ask-claude
 
-A second-opinion partner from Claude Opus, designed to be **driven by your own
-Claude Code session as orchestrator**. The wrapper runs `claude --print
+A second-opinion partner from Claude Opus 5.5, Sonnet 5.5, or Fable 5.2, designed to be
+**driven by your own Claude Code session as orchestrator**. The wrapper defaults
+to Opus 5.5 and runs `claude --print
 --output-format stream-json` so you can watch the partner think token-by-token,
 distinguish real progress from a hang, and collect the clean final answer.
 
@@ -20,52 +21,98 @@ Never call `claude` directly — the wrapper enforces the model, sets up the
 JSONL stream, manages the per-run state directory, and gives you a uniform
 orchestration surface.
 
-## Two ways to use it
+## Requirements and platforms
 
-### Mode 1 — short one-shot (blocking, simplest)
+- `claude` (Claude Code CLI), signed in; `bash`, `jq`, `python3`, and `uuidgen` on `PATH`.
+- macOS or Linux. **On Windows, run it inside WSL** (WSL2 Ubuntu works): install
+  Claude Code inside the distro, sign in there, and copy the skill into the WSL
+  home (`~/.claude/skills/ask-claude`). The supervisor uses POSIX file locks and
+  process groups, so native Windows Python, PowerShell, and Git Bash are not supported.
+- Ubuntu/WSL: `sudo apt install jq uuid-runtime` provides `jq` and `uuidgen`.
+- Keep `ask.sh` with LF line endings; a CRLF copy fails with `bash\r` errors.
 
-For a quick second opinion that should return in <30s, use the legacy
-positional form. It blocks until the partner finishes, then prints the answer.
+## Choose the mode by shell lifetime
+
+**In a short-lived tool shell (including Codex `exec_command`), use blocking
+`ask.sh ask` in one tool command.** For a long answer, keep that command's
+session alive and poll its session ID. Do not use `start` in one tool call and
+`wait` in another: the tool may stop background children when the first shell
+exits, leaving empty `events.jsonl` and `final.txt` files. An empty result or
+`done` with zero events is not a successful Claude response.
+
+Use `start`/`status`/`wait` only when the shell or process supervisor is known
+to keep the background child alive after `start` returns.
+
+## Model selection
+
+| Request | Exact model | How to invoke |
+|---|---|---|
+| No model specified | Opus 5.5 (`claude-opus-5-5`) | Omit `--model`; this is the default |
+| Opus or Opus 5.5 | `claude-opus-5-5` | Omit `--model`, pass `--model opus`, or pass the exact ID |
+| Sonnet or Sonnet 5.5 | `claude-sonnet-5-5` | Pass `--model sonnet` or the exact ID |
+| Opus 5 | `claude-opus-5` | Pass `--model opus-5` or the exact ID |
+| Fable or Fable 5.2 | `claude-fable-5-2` | Pass `--model fable` or the exact ID |
+| Fable 5.1 | `claude-fable-5-1` | Pass `--model fable-5.1` or the exact ID |
+
+The wrapper pins the human aliases `opus`, `sonnet`, and `fable` to the exact identifiers
+above, so requests remain reproducible even if Claude Code's own moving aliases
+change later. Other explicit model identifiers pass through unchanged.
 
 ```bash
-~/.codex/skills/ask-claude/scripts/ask.sh "Why might this migration fail?"
-~/.codex/skills/ask-claude/scripts/ask.sh "Review the auth flow." /path/to/project
-echo "$LONG_PROMPT" | ~/.codex/skills/ask-claude/scripts/ask.sh - /path/to/project
+# Default: Opus 5.5
+~/.claude/skills/ask-claude/scripts/ask.sh ask "Review this migration."
+
+# Alternate: Fable 5.2
+~/.claude/skills/ask-claude/scripts/ask.sh ask --model fable "Review this migration."
+```
+
+## Two ways to use it
+
+### Mode 1 — blocking (default for tool shells)
+
+Use the explicit `ask` subcommand or legacy positional form. Both block until
+the partner finishes and print the answer. For work lasting more than a tool's
+initial yield time, poll the same running tool session rather than starting a
+new shell command.
+
+```bash
+~/.claude/skills/ask-claude/scripts/ask.sh "Why might this migration fail?"
+~/.claude/skills/ask-claude/scripts/ask.sh "Review the auth flow." /path/to/project
+echo "$LONG_PROMPT" | ~/.claude/skills/ask-claude/scripts/ask.sh - /path/to/project
 ```
 
 Equivalent: `ask.sh ask "..."` (the explicit subcommand).
 
-### Mode 2 — orchestrated (background + live introspection)
+### Mode 2 — persistent shell only (background + live introspection)
 
-For anything non-trivial, **start the partner in the background and watch it
-work**. This is the whole point of the wrapper — you stay in control, you can
-tell the difference between "still thinking" and "hung", and you can pull the
-result whenever it's ready.
+When a persistent shell or process supervisor keeps background children alive,
+you can start the partner in the background and watch it work. This lets you
+distinguish "still thinking" from "hung" and collect the result when ready.
 
 ```bash
 # 1. Kick off — returns immediately with a RUN_ID
-~/.codex/skills/ask-claude/scripts/ask.sh start "Review the migration in /tmp/diff.patch and identify the riskiest change." /path/to/project
+~/.claude/skills/ask-claude/scripts/ask.sh start "Review the migration in /tmp/diff.patch and identify the riskiest change." /path/to/project
 # → RUN_ID=20260501-101234-a1b2c3
 # → EVENTS=~/.cache/ask-runs/claude/20260501-101234-a1b2c3/events.jsonl
 
 # 2. While the partner thinks, do something else, then check on it.
-~/.codex/skills/ask-claude/scripts/ask.sh status latest
+~/.claude/skills/ask-claude/scripts/ask.sh status latest
 # → status: running, pid alive, last_event 0s ago, 47 events
 
 # 3. Spot-check what it's doing right now.
-~/.codex/skills/ask-claude/scripts/ask.sh tail latest -n 15
+~/.claude/skills/ask-claude/scripts/ask.sh tail latest -n 15
 # → [delta] The first risk I see is that...
 # → [tool_use] Read
 # → [delta] Looking at line 142...
 
 # 4. Block on completion when you need the answer.
-~/.codex/skills/ask-claude/scripts/ask.sh wait latest
+~/.claude/skills/ask-claude/scripts/ask.sh wait latest
 # → prints the clean final response
 ```
 
 ## Orchestrator playbook (you, Claude Code)
 
-When you delegate to ask-claude as a partner, your loop is:
+In a persistent shell, the background loop is:
 
 1. **`start`** the run with the prompt and (optionally) project dir. Capture
    `RUN_ID` from the first line of output.
@@ -100,7 +147,7 @@ on the same code from different angles) or for fan-out research.
 
 | Subcommand | What it does | Blocks? |
 |---|---|---|
-| `start [opts] "prompt" [project-dir]` | Spawns child, prints `RUN_ID` and run dir | No |
+| `start [opts] "prompt" [project-dir]` | Spawns child; requires persistent shell or supervisor | No |
 | `status <run-id\|latest>` | Liveness summary: state, pid, session_id, last_event age | No |
 | `tail <run-id\|latest> [-n N]` | Last N events, pretty-printed | No |
 | `events <run-id\|latest>` | Prints absolute path to `events.jsonl` (for Monitor/Read) | No |
@@ -120,7 +167,17 @@ on the same code from different angles) or for fan-out research.
 | `--resume <session-id>` | Resume a specific claude session |
 | `--session-id <uuid>` | Pin to an explicit session UUID |
 | `--fork-session` | Branch from `--resume` into a new session id |
-| `--model <name>` | Override model (default: `claude-opus-4-8`) |
+| `--model <name>` | Override model (default: `claude-opus-5-5`; `fable` pins Fable 5.2, `sonnet` pins Sonnet 5.5, and `opus` pins Opus 5.5) |
+| `--safe-mode` | Disable customizations while retaining normal authentication. |
+| `--restricted` | Apply Claude Code restricted mode. |
+| `--tools <list>` | Select built-in tools; pass `--tools ""` to disable them. |
+| `--allowedTools <list>`, `--disallowedTools <list>` | Forward tool permission lists as a single quoted argument. |
+| `--permission-mode <mode>`, `--permission-prompts <target>` | Forward permission controls; `bypassPermissions` is rejected. |
+| `--max-budget-usd <amount>`, `--effort <level>` | Forward cost and effort controls. Budget is the CLI's control, not a guaranteed billing ceiling. |
+| `--strict-mcp-config`, `--mcp-config <json-or-path>` | Restrict MCP loading and optionally specify explicit servers. |
+| `--disable-slash-commands`, `--no-chrome` | Disable skills or Chrome integration. |
+| `--no-session-persistence` | Avoid saved sessions; these calls cannot subsequently resume. |
+| `--system-prompt <text>`, `--setting-sources <sources>` | Forward explicit prompt and configuration-source controls. |
 | `--bare` | Pass `--bare` to claude — skip CLAUDE.md, hooks, plugins, auto-memory. **Note:** strips OAuth, so requires `ANTHROPIC_API_KEY`. Use only when you want a clean room and have the env set. |
 
 ## Run state layout
@@ -151,7 +208,7 @@ Questions:
 1. Likely root cause?
 2. Smallest safe fix?
 EOF
-~/.codex/skills/ask-claude/scripts/ask.sh start - /path/to/project < "$TMP"
+~/.claude/skills/ask-claude/scripts/ask.sh ask - /path/to/project < "$TMP"
 rm -f "$TMP"
 ```
 
@@ -162,10 +219,11 @@ The wrapper preserves the full claude continuation API. Capture the
 
 ```bash
 SID=$(jq -r .session_id ~/.cache/ask-runs/claude/<run-id>/meta.json)
-~/.codex/skills/ask-claude/scripts/ask.sh start --resume "$SID" "Now propose the smallest safe fix." /path/to/project
+~/.claude/skills/ask-claude/scripts/ask.sh ask --resume "$SID" "Now propose the smallest safe fix." /path/to/project
 ```
 
-Use plain `start`/`ask` for parallel-safe stateless calls. Use
+Use plain `ask` for stateless calls in tool shells; use `start` only with a
+persistent shell or process supervisor. Use
 `--resume <id>` (preferred) or `--continue` (most-recent in cwd, less
 deterministic) when you want stateful follow-up.
 
@@ -181,3 +239,44 @@ deterministic) when you want stateful follow-up.
 - **`is_error: true` in the result event** → the partner returned an error
   (auth, max-turns, budget). The wrapper marks `status: failed`; check
   `final.txt` and `stderr.log` for details.
+
+## Completion and cancellation contract
+
+A Python supervisor launches Claude in a separate process group, records the child
+exit, reaps Claude, and publishes the final response before terminal metadata under
+one lock. `wait` and `result` return nonzero for failed or cancelled runs, including
+empty output or a missing terminal result event. Partial streaming text remains
+available for diagnosis and does not establish successful completion. Response model
+metadata is recorded separately from the requested model when emitted by Claude.
+
+`wait --timeout N` returns 124 without stopping the run. `cancel` requests shutdown
+from the live supervisor, sends TERM then KILL to the contained process group, and
+waits for acknowledgement; cancelled results return 130. Missing acknowledgement
+is an error, not confirmed cancellation. Old runs created before this supervisor
+was installed do not gain process ownership retroactively. Processes that detach
+into another session are outside this containment contract.
+
+Run files include `ready`, `supervisor.done`, `supervisor.log`, and (when requested)
+`cancel.request`. `pid` identifies the supervisor; `child_pid` identifies Claude.
+Background survival still depends on the execution host. No sleep/reboot restart
+or hours-long inference guarantee is implied. Use a persistent supervisor for workers.
+
+For a tools-disabled consultation in an empty scratch directory, while retaining
+normal OAuth authentication:
+
+```bash
+~/.claude/skills/ask-claude/scripts/ask.sh ask --model sonnet \
+  --safe-mode --restricted --tools "" --strict-mcp-config \
+  --disable-slash-commands --permission-mode dontAsk --permission-prompts none \
+  --no-session-persistence --no-chrome --max-budget-usd 0.10 \
+  --system-prompt "Reply only to the supplied readiness prompt." \
+  "Return READY." /path/to/empty/scratch
+```
+
+Unknown options are rejected; use `--` before a prompt beginning with a dash.
+Controls are passed as individual shell arguments, without shell evaluation.
+Offline verification:
+
+```bash
+ASK_RUN_ROOT=/tmp/ask-claude-tests python3 -m unittest discover -s ~/.claude/skills/ask-claude/scripts -p 'test_*.py' -v
+```
